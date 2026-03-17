@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const queensState = {
-        crowns: new Set(),
+        marks: new Map(),
         gameOver: false,
         puzzle: null,
         gridNumber: 1
@@ -477,8 +477,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return queensState.puzzle.regions[row][col];
     }
 
+    function getQueensMark(key) {
+        return queensState.marks.get(key) || "empty";
+    }
+
     function getQueensCrowns() {
-        return Array.from(queensState.crowns, parseQueensKey);
+        return Array.from(queensState.marks.entries())
+            .filter(([, mark]) => mark === "crown")
+            .map(([key]) => parseQueensKey(key));
     }
 
     function updateQueensStats() {
@@ -491,16 +497,84 @@ document.addEventListener("DOMContentLoaded", () => {
         queensGridNumber.textContent = String(queensState.gridNumber);
     }
 
-    function renderQueensCrowns() {
+    function getQueensRuleState() {
+        const crowns = getQueensCrowns();
+        const conflictingKeys = new Set();
+        const brokenRules = [];
+
+        function registerGroupedConflicts(values, type) {
+            for (const keys of values.values()) {
+                if (keys.length > 1) {
+                    keys.forEach((key) => conflictingKeys.add(key));
+                    brokenRules.push(type);
+                }
+            }
+        }
+
+        const rowMap = new Map();
+        const colMap = new Map();
+        const regionMap = new Map();
+
+        for (const crown of crowns) {
+            const key = createQueensKey(crown.row, crown.col);
+            const region = getQueensRegion(crown.row, crown.col);
+
+            if (!rowMap.has(crown.row)) {
+                rowMap.set(crown.row, []);
+            }
+            rowMap.get(crown.row).push(key);
+
+            if (!colMap.has(crown.col)) {
+                colMap.set(crown.col, []);
+            }
+            colMap.get(crown.col).push(key);
+
+            if (!regionMap.has(region)) {
+                regionMap.set(region, []);
+            }
+            regionMap.get(region).push(key);
+        }
+
+        registerGroupedConflicts(rowMap, "plus d'une couronne sur la meme ligne");
+        registerGroupedConflicts(colMap, "plus d'une couronne sur la meme colonne");
+        registerGroupedConflicts(regionMap, "plus d'une couronne dans la meme forme");
+
+        for (let index = 0; index < crowns.length; index += 1) {
+            for (let nextIndex = index + 1; nextIndex < crowns.length; nextIndex += 1) {
+                const first = crowns[index];
+                const second = crowns[nextIndex];
+                const isTouchingDiagonally =
+                    Math.abs(first.row - second.row) === 1 && Math.abs(first.col - second.col) === 1;
+
+                if (isTouchingDiagonally) {
+                    conflictingKeys.add(createQueensKey(first.row, first.col));
+                    conflictingKeys.add(createQueensKey(second.row, second.col));
+                    brokenRules.push("des couronnes se touchent en diagonale");
+                }
+            }
+        }
+
+        const messages = [...new Set(brokenRules)];
+
+        return {
+            isValid: messages.length === 0,
+            messages,
+            conflictingKeys
+        };
+    }
+
+    function renderQueensMarks(ruleState = getQueensRuleState()) {
         queensBoard.querySelectorAll(".queens-cell").forEach((cell) => {
             const key = createQueensKey(
                 Number.parseInt(cell.dataset.row, 10),
                 Number.parseInt(cell.dataset.col, 10)
             );
+            const mark = getQueensMark(key);
 
-            const hasCrown = queensState.crowns.has(key);
-            cell.classList.toggle("has-crown", hasCrown);
-            cell.textContent = hasCrown ? "\u265B" : "";
+            cell.classList.toggle("has-cross", mark === "cross");
+            cell.classList.toggle("has-crown", mark === "crown");
+            cell.classList.toggle("is-conflict", ruleState.conflictingKeys.has(key));
+            cell.textContent = mark === "cross" ? "\u00D7" : mark === "crown" ? "\u265B" : "";
         });
     }
 
@@ -530,12 +604,41 @@ document.addEventListener("DOMContentLoaded", () => {
         return cell;
     }
 
-    function initializeQueensBoard(message = "Clique sur une case pour poser une couronne. Reclique dessus pour l'enlever.") {
+    function refreshQueensBoard(preferredMessage = "") {
+        const ruleState = getQueensRuleState();
+        const crowns = getQueensCrowns();
+        const isSolved = ruleState.isValid && crowns.length === queensState.puzzle.size;
+
+        queensState.gameOver = isSolved;
+        renderQueensMarks(ruleState);
+        updateQueensStats();
+
+        if (isSolved) {
+            setQueensInfoMessage("Bravo ! Toutes les couronnes sont placees et les regles sont respectees.", "success");
+            return;
+        }
+
+        if (!ruleState.isValid) {
+            setQueensInfoMessage(`Regles cassees : ${ruleState.messages.join(", ")}.`, "warning");
+            return;
+        }
+
+        if (preferredMessage) {
+            setQueensInfoMessage(preferredMessage);
+            return;
+        }
+
+        setQueensInfoMessage("Plateau valide pour l'instant. Clique une fois pour une croix, deux fois pour une couronne.");
+    }
+
+    function initializeQueensBoard(
+        message = "Clique une fois pour une croix, deux fois pour une couronne, trois fois pour vider la case."
+    ) {
         if (!queensState.puzzle) {
             generateQueensPuzzle();
         }
 
-        queensState.crowns.clear();
+        queensState.marks.clear();
         queensState.gameOver = false;
         queensBoard.innerHTML = "";
         queensBoard.style.gridTemplateColumns = `repeat(${queensState.puzzle.size}, var(--square-size))`;
@@ -547,84 +650,29 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        renderQueensCrowns();
-        updateQueensStats();
-        setQueensInfoMessage(message);
-    }
-
-    function validateQueensPlacement(row, col) {
-        const region = getQueensRegion(row, col);
-
-        for (const crown of getQueensCrowns()) {
-            if (crown.row === row) {
-                return { valid: false, message: "Impossible: il y a deja une couronne sur cette ligne." };
-            }
-
-            if (crown.col === col) {
-                return { valid: false, message: "Impossible: il y a deja une couronne sur cette colonne." };
-            }
-
-            if (getQueensRegion(crown.row, crown.col) === region) {
-                return { valid: false, message: "Impossible: cette forme de couleur a deja sa couronne." };
-            }
-
-            const isTouchingDiagonally = Math.abs(crown.row - row) === 1 && Math.abs(crown.col - col) === 1;
-            if (isTouchingDiagonally) {
-                return { valid: false, message: "Impossible: une couronne ne peut pas toucher une autre en diagonale." };
-            }
-        }
-
-        return { valid: true, message: "" };
-    }
-
-    function isQueensSolved() {
-        const crowns = getQueensCrowns();
-        const size = queensState.puzzle.size;
-
-        if (crowns.length !== size) {
-            return false;
-        }
-
-        const rows = new Set(crowns.map((crown) => crown.row));
-        const cols = new Set(crowns.map((crown) => crown.col));
-        const regions = new Set(crowns.map((crown) => getQueensRegion(crown.row, crown.col)));
-
-        return rows.size === size && cols.size === size && regions.size === size;
+        refreshQueensBoard(message);
     }
 
     function handleQueensCellClick(event) {
-        const cell = event.currentTarget;
-        const row = Number.parseInt(cell.dataset.row, 10);
-        const col = Number.parseInt(cell.dataset.col, 10);
+        const row = Number.parseInt(event.currentTarget.dataset.row, 10);
+        const col = Number.parseInt(event.currentTarget.dataset.col, 10);
         const key = createQueensKey(row, col);
+        const currentMark = getQueensMark(key);
 
-        if (queensState.crowns.has(key)) {
-            queensState.crowns.delete(key);
-            queensState.gameOver = false;
-            renderQueensCrowns();
-            updateQueensStats();
-            setQueensInfoMessage("Couronne retiree. Tu peux essayer une autre position.");
+        if (currentMark === "empty") {
+            queensState.marks.set(key, "cross");
+            refreshQueensBoard("Croix posee.");
             return;
         }
 
-        const validation = validateQueensPlacement(row, col);
-        if (!validation.valid) {
-            flashInvalidCell(cell);
-            setQueensInfoMessage(validation.message, "warning");
+        if (currentMark === "cross") {
+            queensState.marks.set(key, "crown");
+            refreshQueensBoard("Couronne posee.");
             return;
         }
 
-        queensState.crowns.add(key);
-        renderQueensCrowns();
-        updateQueensStats();
-
-        if (isQueensSolved()) {
-            queensState.gameOver = true;
-            setQueensInfoMessage("Bravo ! Toutes les couronnes sont placees et les regles sont respectees.", "success");
-            return;
-        }
-
-        setQueensInfoMessage("Couronne posee. Continue jusqu'a remplir chaque ligne, colonne et forme.");
+        queensState.marks.delete(key);
+        refreshQueensBoard("Case vide.");
     }
 
     backToHomeButton.addEventListener("click", () => showScreen("home"));
