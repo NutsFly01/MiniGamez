@@ -3,37 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu du Cavalier</title>
+    <title>WebCavalier</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Jeu du Cavalier</h1>
-        <div class="controls">
-            <label for="boardSize">Taille de l'échiquier :</label>
-            <select id="boardSize">
-                <option value="6">6x6</option>
-                <option value="7">7x7</option>
-                <option value="8" selected>8x8</option>
-                <option value="9">9x9</option>
-                <option value="10">10x10</option>
-                <option value="11">11x11</option>
-                <option value="12">12x12</option>
-            </select>
-            <button id="newGame">Nouvelle partie</button>
-        </div>
-        <div class="stats">
-            <div class="moves">Mouvements : <span id="moveCount">0</span></div>
-            <div class="best-score">Meilleur score : <span id="bestScore">-</span></div>
-        </div>
-        <div class="board" id="chessboard"></div>
-        <div class="info">
-            <p>Cliquez sur une case pour déplacer le cavalier</p>
-        </div>
-        <div class="credits">
-            <p>Développé par <a href="https://github.com/NutsFly01" target="_blank">@NutsFly01</a></p>
-        </div>
+    <div class="page-shell">
+        <section class="screen screen-home" id="homeScreen">
+            <header class="hero">
+                <p class="eyebrow">Arcade maison</p>
+                <h1>Choisis le jeu qu'on lance ensuite</h1>
+                <p class="hero-copy">
+                    WebCavalier devient notre page d'accueil pour tous les jeux qu'on va coder ensemble.
+                    Le premier est deja jouable, les suivants attendent leur tour.
+                </p>
+            </header>
+
+            <section class="library-panel">
+                <div class="panel-heading">
+                    <div>
+                        <p class="panel-kicker">Bibliotheque</p>
+                        <h2>Nos jeux</h2>
+                    </div>
+                    <p class="panel-copy">Un clic pour lancer, un autre pour revenir ici et continuer a construire la suite.</p>
+                </div>
+
+                <div class="games-grid" id="gamesGrid"></div>
+            </section>
+        </section>
+
+        <section class="screen screen-game hidden" id="gameScreen">
+            <div class="game-topbar">
+                <button class="ghost-button" id="backToHome" type="button">Retour a l'accueil</button>
+                <div class="game-title-block">
+                    <p class="panel-kicker">En cours</p>
+                    <h2 id="activeGameTitle">Jeu du Cavalier</h2>
+                </div>
+            </div>
+
+            <div class="game-layout">
+                <aside class="game-sidebar">
+                    <div class="sidebar-card">
+                        <p class="panel-kicker">Collection</p>
+                        <h3>Tous nos jeux</h3>
+                        <div class="sidebar-games" id="sidebarGames"></div>
+                    </div>
+                </aside>
+
+                <main class="game-panel">
+                    <section class="game-card" id="knightGame">
+                        <div class="game-header">
+                            <div>
+                                <p class="panel-kicker">Jeu jouable</p>
+                                <h3>Jeu du Cavalier</h3>
+                            </div>
+                            <p class="game-description">
+                                Deplace le cavalier sans repasser sur une case deja visitee.
+                            </p>
+                        </div>
+
+                        <div class="controls">
+                            <label for="boardSize">Taille de l'echiquier</label>
+                            <select id="boardSize">
+                                <option value="6">6x6</option>
+                                <option value="7">7x7</option>
+                                <option value="8" selected>8x8</option>
+                                <option value="9">9x9</option>
+                                <option value="10">10x10</option>
+                                <option value="11">11x11</option>
+                                <option value="12">12x12</option>
+                            </select>
+                            <button id="newGame" type="button">Nouvelle partie</button>
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-pill">
+                                <span class="stat-label">Mouvements</span>
+                                <span class="stat-value" id="moveCount">0</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Meilleur score</span>
+                                <span class="stat-value" id="bestScore">-</span>
+                            </div>
+                        </div>
+
+                        <div class="board-frame">
+                            <div class="board" id="chessboard"></div>
+                        </div>
+
+                        <div class="info" id="gameInfo">
+                            Clique sur une case valide pour deplacer le cavalier.
+                        </div>
+                    </section>
+
+                    <section class="game-card hidden" id="queensGame">
+                        <div class="game-header">
+                            <div>
+                                <p class="panel-kicker">Jeu jouable</p>
+                                <h3>Queens</h3>
+                            </div>
+                            <p class="game-description">
+                                Place une couronne par ligne, par colonne et par forme de couleur, sans contact en diagonale.
+                            </p>
+                        </div>
+
+                        <div class="controls">
+                            <button id="resetQueens" type="button">Recommencer</button>
+                            <button id="changeQueensGrid" type="button">Changer le quadrillage</button>
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-pill">
+                                <span class="stat-label">Couronnes posees</span>
+                                <span class="stat-value" id="queensPlacedCount">0 / 7</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Formes validees</span>
+                                <span class="stat-value" id="queensRegionCount">0 / 7</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Quadrillage</span>
+                                <span class="stat-value" id="queensGridNumber">1</span>
+                            </div>
+                        </div>
+
+                        <div class="board-frame queens-frame">
+                            <div class="board queens-board" id="queensBoard"></div>
+                        </div>
+
+                        <div class="rules-card">
+                            <h4>Regles</h4>
+                            <ul class="rules-list">
+                                <li>Une couronne par ligne.</li>
+                                <li>Une couronne par colonne.</li>
+                                <li>Une couronne par forme de couleur.</li>
+                                <li>Deux couronnes ne peuvent pas se toucher en diagonale a une case.</li>
+                            </ul>
+                        </div>
+
+                        <div class="info" id="queensInfo">
+                            Clique sur une case pour poser une couronne. Reclique dessus pour l'enlever.
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </section>
     </div>
+
     <script src="script.js"></script>
 </body>
-</html> 
+</html>
