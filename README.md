@@ -1,1 +1,1 @@
-https://nutsfly01.github.io/webcavalier/
+https://nutsfly01.github.io/MiniGamez/
