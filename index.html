@@ -201,6 +201,69 @@
                             Charge un article puis tente de retrouver le titre de la page.
                         </div>
                     </section>
+
+                    <section class="game-card hidden" id="sudokuGame">
+                        <div class="game-header">
+                            <div>
+                                <p class="panel-kicker">Jeu jouable</p>
+                                <h3>Sudoku</h3>
+                            </div>
+                            <p class="game-description">
+                                Remplis la grille de 1 a 9. Quelques aides sont la pour jouer plus facilement : pavé numerique, mode notes, surbrillance et indice.
+                            </p>
+                        </div>
+
+                        <div class="controls sudoku-controls">
+                            <label for="sudokuDifficulty">Difficulte</label>
+                            <select id="sudokuDifficulty">
+                                <option value="easy">Facile</option>
+                                <option value="medium">Moyen</option>
+                                <option value="hard">Difficile</option>
+                            </select>
+                            <button id="newSudokuGame" type="button">Nouvelle grille</button>
+                            <button id="toggleSudokuNotes" type="button">Mode notes : non</button>
+                            <button id="sudokuHint" type="button">Indice</button>
+                        </div>
+
+                        <div class="stats sudoku-stats">
+                            <div class="stat-pill">
+                                <span class="stat-label">Cases remplies</span>
+                                <span class="stat-value" id="sudokuFilledCount">0 / 81</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Mode</span>
+                                <span class="stat-value" id="sudokuModeState">Chiffres</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Indices utilises</span>
+                                <span class="stat-value" id="sudokuHintCount">0</span>
+                            </div>
+                        </div>
+
+                        <div class="sudoku-layout">
+                            <div class="board-frame sudoku-frame">
+                                <div class="board sudoku-board" id="sudokuBoard"></div>
+                            </div>
+
+                            <aside class="sudoku-tools-card">
+                                <h4>Aides rapides</h4>
+                                <p class="sudoku-selection-info" id="sudokuSelectionInfo">
+                                    Selectionne une case vide pour commencer.
+                                </p>
+
+                                <div class="sudoku-candidates" id="sudokuCandidates"></div>
+                                <div class="sudoku-number-pad" id="sudokuNumberPad"></div>
+
+                                <p class="sudoku-helper-copy">
+                                    Tu peux aussi jouer au clavier, utiliser les fleches pour te deplacer et appuyer sur N pour activer les notes.
+                                </p>
+                            </aside>
+                        </div>
+
+                        <div class="info" id="sudokuInfo">
+                            Complete la grille sans doublon sur chaque ligne, colonne et carre 3x3.
+                        </div>
+                    </section>
                 </main>
             </div>
         </section>
