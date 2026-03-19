@@ -30,6 +30,13 @@ document.addEventListener("DOMContentLoaded", () => {
             available: true
         },
         {
+            id: "puzzle",
+            title: "Puzzle rapide",
+            description: "Un puzzle a assembler en deplacant les pieces pour reconstruire le dessin final.",
+            status: "Nouveau",
+            available: true
+        },
+        {
             id: "snake",
             title: "Snake",
             description: "Une version maison du serpent, a faire grandir sans heurter les murs.",
@@ -99,6 +106,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const sudokuCandidates = document.getElementById("sudokuCandidates");
     const sudokuNumberPad = document.getElementById("sudokuNumberPad");
     const sudokuInfo = document.getElementById("sudokuInfo");
+    const puzzleGame = document.getElementById("puzzleGame");
+    const puzzleBoard = document.getElementById("puzzleBoard");
+    const puzzleSizeSelect = document.getElementById("puzzleSize");
+    const puzzleArtworkSelect = document.getElementById("puzzleArtwork");
+    const newPuzzleGameButton = document.getElementById("newPuzzleGame");
+    const togglePuzzleHelpButton = document.getElementById("togglePuzzleHelp");
+    const puzzleMoveCount = document.getElementById("puzzleMoveCount");
+    const puzzleElapsedTime = document.getElementById("puzzleElapsedTime");
+    const puzzleBestTime = document.getElementById("puzzleBestTime");
+    const puzzleInfo = document.getElementById("puzzleInfo");
 
     const knightState = {
         knightPosition: { row: 0, col: 0 },
@@ -140,6 +157,306 @@ document.addEventListener("DOMContentLoaded", () => {
         noteMode: false,
         hintCount: 0,
         gameOver: false
+    };
+
+    const puzzleState = {
+        size: 3,
+        artworkId: "bubbles",
+        artworkLabel: "Bulles pop",
+        pieces: [],
+        placedCount: 0,
+        startedAt: 0,
+        elapsedSeconds: 0,
+        timerId: null,
+        gameOver: false,
+        helpMode: false,
+        activePieceId: "",
+        dragOffsetX: 0,
+        dragOffsetY: 0,
+        artworkCache: new Map()
+    };
+
+    const puzzleArtworkCatalog = {
+        bubbles: {
+            label: "Bulles pop",
+            render(targetSize, detailCount) {
+                const sparkles = Array.from({ length: detailCount }, (_, index) => {
+                    const cx = 22 + (index * 47) % (targetSize - 44);
+                    const cy = 24 + (index * 59) % (targetSize - 48);
+                    const radius = 2 + (index % 3);
+                    return `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="rgba(255,255,255,${0.16 + (index % 4) * 0.06})"/>`;
+                }).join("");
+
+                return `
+                    <defs>
+                        <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+                            <stop offset="0%" stop-color="#a789e0"/>
+                            <stop offset="100%" stop-color="#694ea8"/>
+                        </radialGradient>
+                        <radialGradient id="redBall" cx="35%" cy="30%" r="65%">
+                            <stop offset="0%" stop-color="#ffd6dc"/>
+                            <stop offset="55%" stop-color="#f3779f"/>
+                            <stop offset="100%" stop-color="#c6466f"/>
+                        </radialGradient>
+                        <radialGradient id="greenBall" cx="32%" cy="28%" r="65%">
+                            <stop offset="0%" stop-color="#f5ffe1"/>
+                            <stop offset="55%" stop-color="#b7ea74"/>
+                            <stop offset="100%" stop-color="#6eb243"/>
+                        </radialGradient>
+                        <radialGradient id="brownBall" cx="34%" cy="28%" r="65%">
+                            <stop offset="0%" stop-color="#f3d7cb"/>
+                            <stop offset="55%" stop-color="#c88f6b"/>
+                            <stop offset="100%" stop-color="#8f5b3c"/>
+                        </radialGradient>
+                        <radialGradient id="pinkBall" cx="35%" cy="30%" r="65%">
+                            <stop offset="0%" stop-color="#ffd5ef"/>
+                            <stop offset="55%" stop-color="#f35cb8"/>
+                            <stop offset="100%" stop-color="#bf2f86"/>
+                        </radialGradient>
+                        <radialGradient id="yellowBall" cx="34%" cy="28%" r="65%">
+                            <stop offset="0%" stop-color="#fff7bf"/>
+                            <stop offset="55%" stop-color="#ffd74a"/>
+                            <stop offset="100%" stop-color="#e4a623"/>
+                        </radialGradient>
+                        <radialGradient id="cyanBall" cx="35%" cy="30%" r="65%">
+                            <stop offset="0%" stop-color="#ebffff"/>
+                            <stop offset="55%" stop-color="#8fe3ff"/>
+                            <stop offset="100%" stop-color="#54b6d8"/>
+                        </radialGradient>
+                        <linearGradient id="frameGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0.46)"/>
+                            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="${targetSize}" height="${targetSize}" fill="url(#bg)"/>
+                    <rect x="4" y="4" width="${targetSize - 8}" height="${targetSize - 8}" rx="18" fill="none" stroke="url(#frameGlow)" stroke-width="8"/>
+                    <path d="M${targetSize * 0.02} ${targetSize * 0.11}c${targetSize * 0.18} ${targetSize * 0.12} ${targetSize * 0.32} ${targetSize * 0.03} ${targetSize * 0.52} ${targetSize * 0.08}" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M${targetSize * 0.03} ${targetSize * 0.36}c${targetSize * 0.2}-${targetSize * 0.1} ${targetSize * 0.34} ${targetSize * 0.02} ${targetSize * 0.48}-${targetSize * 0.02}" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M${targetSize * 0.07} ${targetSize * 0.74}c${targetSize * 0.24}-${targetSize * 0.05} ${targetSize * 0.28}-${targetSize * 0.21} ${targetSize * 0.54}-${targetSize * 0.22}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="${targetSize * 0.06}" cy="${targetSize * 0.14}" r="${targetSize * 0.19}" fill="url(#redBall)"/>
+                    <circle cx="${targetSize * 0.5}" cy="${targetSize * 0.18}" r="${targetSize * 0.19}" fill="url(#greenBall)"/>
+                    <circle cx="${targetSize * 0.93}" cy="${targetSize * 0.13}" r="${targetSize * 0.18}" fill="url(#brownBall)"/>
+                    <circle cx="${targetSize * 0.22}" cy="${targetSize * 0.54}" r="${targetSize * 0.2}" fill="url(#pinkBall)"/>
+                    <circle cx="${targetSize * 0.76}" cy="${targetSize * 0.56}" r="${targetSize * 0.2}" fill="url(#yellowBall)"/>
+                    <circle cx="${targetSize * 0.48}" cy="${targetSize * 0.84}" r="${targetSize * 0.22}" fill="url(#cyanBall)"/>
+                    <g fill="none" stroke="rgba(255,255,255,0.34)" stroke-width="2.5" stroke-linecap="round">
+                        <path d="M${targetSize * 0.01} ${targetSize * 0.05}c${targetSize * 0.08} ${targetSize * 0.02} ${targetSize * 0.06} ${targetSize * 0.12} ${targetSize * 0.14} ${targetSize * 0.14}"/>
+                        <path d="M${targetSize * 0.38} ${targetSize * 0.08}c${targetSize * 0.04} ${targetSize * 0.06} ${targetSize * 0.16} ${targetSize * 0.02} ${targetSize * 0.18} ${targetSize * 0.09}"/>
+                        <path d="M${targetSize * 0.79} ${targetSize * 0.02}c${targetSize * 0.01} ${targetSize * 0.06} ${targetSize * 0.12} ${targetSize * 0.08} ${targetSize * 0.11} ${targetSize * 0.15}"/>
+                        <path d="M${targetSize * 0.14} ${targetSize * 0.46}c${targetSize * 0.05} ${targetSize * 0.05}-${targetSize * 0.01} ${targetSize * 0.13} ${targetSize * 0.06} ${targetSize * 0.17}"/>
+                        <path d="M${targetSize * 0.66} ${targetSize * 0.46}c${targetSize * 0.08} ${targetSize * 0.03} ${targetSize * 0.09} ${targetSize * 0.11} ${targetSize * 0.16} ${targetSize * 0.13}"/>
+                        <path d="M${targetSize * 0.37} ${targetSize * 0.78}c${targetSize * 0.07} ${targetSize * 0.02} ${targetSize * 0.09} ${targetSize * 0.13} ${targetSize * 0.17} ${targetSize * 0.14}"/>
+                    </g>
+                    ${sparkles}
+                `;
+            }
+        },
+        garden: {
+            label: "Jardin",
+            render(targetSize, detailCount) {
+                const petals = Array.from({ length: detailCount }, (_, index) => {
+                    const x = 26 + (index * 53) % (targetSize - 52);
+                    const y = 18 + (index * 37) % (targetSize - 40);
+                    return `
+                        <circle cx="${x}" cy="${y}" r="${4 + (index % 3)}" fill="rgba(255,255,255,0.28)"/>
+                        <path d="M ${x - 8} ${y + 8} q 8 8 16 0" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
+                    `;
+                }).join("");
+
+                return `
+                    <defs>
+                        <linearGradient id="gardenBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#c9f1d0"/>
+                            <stop offset="55%" stop-color="#8bd3a2"/>
+                            <stop offset="100%" stop-color="#5aad74"/>
+                        </linearGradient>
+                        <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#fff9c9"/>
+                            <stop offset="100%" stop-color="#f6c95d"/>
+                        </radialGradient>
+                        <radialGradient id="flowerPink" cx="35%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#ffe0f0"/>
+                            <stop offset="100%" stop-color="#ec5aa7"/>
+                        </radialGradient>
+                        <radialGradient id="flowerOrange" cx="35%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#fff0d4"/>
+                            <stop offset="100%" stop-color="#f28d37"/>
+                        </radialGradient>
+                        <radialGradient id="flowerBlue" cx="35%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#e5f8ff"/>
+                            <stop offset="100%" stop-color="#4faad8"/>
+                        </radialGradient>
+                    </defs>
+                    <rect width="${targetSize}" height="${targetSize}" fill="url(#gardenBg)"/>
+                    <rect y="${targetSize * 0.7}" width="${targetSize}" height="${targetSize * 0.3}" fill="#4f8c4d"/>
+                    <circle cx="${targetSize * 0.83}" cy="${targetSize * 0.18}" r="${targetSize * 0.12}" fill="url(#sun)"/>
+                    <g fill="none" stroke="#3f7b47" stroke-width="${Math.max(4, targetSize * 0.012)}" stroke-linecap="round">
+                        <path d="M${targetSize * 0.2} ${targetSize * 0.86} C ${targetSize * 0.22} ${targetSize * 0.68}, ${targetSize * 0.18} ${targetSize * 0.5}, ${targetSize * 0.22} ${targetSize * 0.34}"/>
+                        <path d="M${targetSize * 0.48} ${targetSize * 0.88} C ${targetSize * 0.5} ${targetSize * 0.7}, ${targetSize * 0.47} ${targetSize * 0.54}, ${targetSize * 0.52} ${targetSize * 0.32}"/>
+                        <path d="M${targetSize * 0.76} ${targetSize * 0.86} C ${targetSize * 0.74} ${targetSize * 0.7}, ${targetSize * 0.78} ${targetSize * 0.54}, ${targetSize * 0.74} ${targetSize * 0.38}"/>
+                    </g>
+                    <g>
+                        <circle cx="${targetSize * 0.22}" cy="${targetSize * 0.3}" r="${targetSize * 0.12}" fill="url(#flowerPink)"/>
+                        <circle cx="${targetSize * 0.52}" cy="${targetSize * 0.29}" r="${targetSize * 0.13}" fill="url(#flowerOrange)"/>
+                        <circle cx="${targetSize * 0.74}" cy="${targetSize * 0.35}" r="${targetSize * 0.11}" fill="url(#flowerBlue)"/>
+                        <circle cx="${targetSize * 0.22}" cy="${targetSize * 0.3}" r="${targetSize * 0.03}" fill="#fff5b1"/>
+                        <circle cx="${targetSize * 0.52}" cy="${targetSize * 0.29}" r="${targetSize * 0.03}" fill="#fff3a0"/>
+                        <circle cx="${targetSize * 0.74}" cy="${targetSize * 0.35}" r="${targetSize * 0.03}" fill="#fff8c4"/>
+                    </g>
+                    ${petals}
+                `;
+            }
+        },
+        rocket: {
+            label: "Fusee",
+            render(targetSize, detailCount) {
+                const stars = Array.from({ length: detailCount + 6 }, (_, index) => {
+                    const x = 20 + (index * 61) % (targetSize - 40);
+                    const y = 16 + (index * 43) % (targetSize - 32);
+                    const size = 4 + (index % 3);
+                    return `<path d="M ${x} ${y - size} L ${x + size * 0.35} ${y - size * 0.35} L ${x + size} ${y} L ${x + size * 0.35} ${y + size * 0.35} L ${x} ${y + size} L ${x - size * 0.35} ${y + size * 0.35} L ${x - size} ${y} L ${x - size * 0.35} ${y - size * 0.35} Z" fill="rgba(255,242,130,0.72)"/>`;
+                }).join("");
+
+                return `
+                    <defs>
+                        <linearGradient id="spaceBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#10183d"/>
+                            <stop offset="55%" stop-color="#25388d"/>
+                            <stop offset="100%" stop-color="#6e2ab3"/>
+                        </linearGradient>
+                        <radialGradient id="planet" cx="35%" cy="30%" r="65%">
+                            <stop offset="0%" stop-color="#d9ecff"/>
+                            <stop offset="100%" stop-color="#7aa6ff"/>
+                        </radialGradient>
+                        <linearGradient id="ship" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#fff5f5"/>
+                            <stop offset="100%" stop-color="#d8d9ec"/>
+                        </linearGradient>
+                        <linearGradient id="fire" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#fff4a1"/>
+                            <stop offset="50%" stop-color="#ff9f3c"/>
+                            <stop offset="100%" stop-color="#f04f2a"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="${targetSize}" height="${targetSize}" fill="url(#spaceBg)"/>
+                    <circle cx="${targetSize * 0.16}" cy="${targetSize * 0.2}" r="${targetSize * 0.11}" fill="url(#planet)" opacity="0.86"/>
+                    <circle cx="${targetSize * 0.82}" cy="${targetSize * 0.18}" r="${targetSize * 0.08}" fill="#ffd874" opacity="0.7"/>
+                    <path d="M${targetSize * 0.2} ${targetSize * 0.78} C ${targetSize * 0.34} ${targetSize * 0.68}, ${targetSize * 0.5} ${targetSize * 0.5}, ${targetSize * 0.64} ${targetSize * 0.2}" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="${Math.max(6, targetSize * 0.018)}" stroke-linecap="round"/>
+                    <g transform="translate(${targetSize * 0.46} ${targetSize * 0.2}) rotate(18)">
+                        <path d="M0 0 C ${targetSize * 0.06} ${targetSize * 0.04}, ${targetSize * 0.1} ${targetSize * 0.16}, 0 ${targetSize * 0.28} C -${targetSize * 0.1} ${targetSize * 0.16}, -${targetSize * 0.06} ${targetSize * 0.04}, 0 0 Z" fill="url(#ship)"/>
+                        <circle cx="0" cy="${targetSize * 0.11}" r="${targetSize * 0.03}" fill="#69c7ff"/>
+                        <path d="M-${targetSize * 0.06} ${targetSize * 0.16} L -${targetSize * 0.12} ${targetSize * 0.22} L -${targetSize * 0.04} ${targetSize * 0.2} Z" fill="#ff6375"/>
+                        <path d="M${targetSize * 0.06} ${targetSize * 0.16} L ${targetSize * 0.12} ${targetSize * 0.22} L ${targetSize * 0.04} ${targetSize * 0.2} Z" fill="#ff6375"/>
+                        <path d="M0 ${targetSize * 0.28} C ${targetSize * 0.03} ${targetSize * 0.34}, ${targetSize * 0.02} ${targetSize * 0.42}, 0 ${targetSize * 0.48} C -${targetSize * 0.02} ${targetSize * 0.42}, -${targetSize * 0.03} ${targetSize * 0.34}, 0 ${targetSize * 0.28} Z" fill="url(#fire)"/>
+                    </g>
+                    ${stars}
+                `;
+            }
+        },
+        aquarium: {
+            label: "Aquarium",
+            render(targetSize, detailCount) {
+                const bubbles = Array.from({ length: detailCount + 6 }, (_, index) => {
+                    const x = 18 + (index * 39) % (targetSize - 36);
+                    const y = targetSize - 18 - (index * 51) % (targetSize - 40);
+                    const r = 3 + (index % 4) * 1.5;
+                    return `<circle cx="${x}" cy="${y}" r="${r}" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.24)" stroke-width="1"/>`;
+                }).join("");
+
+                return `
+                    <defs>
+                        <linearGradient id="water" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#89d8ff"/>
+                            <stop offset="55%" stop-color="#3f96d6"/>
+                            <stop offset="100%" stop-color="#1f5f96"/>
+                        </linearGradient>
+                        <linearGradient id="sand" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#ffd88a"/>
+                            <stop offset="100%" stop-color="#e2b969"/>
+                        </linearGradient>
+                        <radialGradient id="fishOrange" cx="30%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#fff0d7"/>
+                            <stop offset="100%" stop-color="#ff9b42"/>
+                        </radialGradient>
+                        <radialGradient id="fishBlue" cx="30%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#eef9ff"/>
+                            <stop offset="100%" stop-color="#5ab5f2"/>
+                        </radialGradient>
+                        <radialGradient id="fishPink" cx="30%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#ffe5f2"/>
+                            <stop offset="100%" stop-color="#ff70b1"/>
+                        </radialGradient>
+                    </defs>
+                    <rect width="${targetSize}" height="${targetSize}" fill="url(#water)"/>
+                    <path d="M0 ${targetSize * 0.8} C ${targetSize * 0.14} ${targetSize * 0.74}, ${targetSize * 0.3} ${targetSize * 0.84}, ${targetSize * 0.42} ${targetSize * 0.78} S ${targetSize * 0.74} ${targetSize * 0.86}, ${targetSize} ${targetSize * 0.78} V ${targetSize} H 0 Z" fill="url(#sand)"/>
+                    <g fill="none" stroke="#2a8857" stroke-width="${Math.max(5, targetSize * 0.014)}" stroke-linecap="round">
+                        <path d="M${targetSize * 0.18} ${targetSize * 0.82} C ${targetSize * 0.12} ${targetSize * 0.62}, ${targetSize * 0.16} ${targetSize * 0.48}, ${targetSize * 0.14} ${targetSize * 0.28}"/>
+                        <path d="M${targetSize * 0.3} ${targetSize * 0.84} C ${targetSize * 0.34} ${targetSize * 0.64}, ${targetSize * 0.28} ${targetSize * 0.5}, ${targetSize * 0.32} ${targetSize * 0.24}"/>
+                        <path d="M${targetSize * 0.8} ${targetSize * 0.82} C ${targetSize * 0.76} ${targetSize * 0.62}, ${targetSize * 0.82} ${targetSize * 0.48}, ${targetSize * 0.78} ${targetSize * 0.26}"/>
+                    </g>
+                    <g>
+                        <ellipse cx="${targetSize * 0.3}" cy="${targetSize * 0.34}" rx="${targetSize * 0.12}" ry="${targetSize * 0.08}" fill="url(#fishOrange)"/>
+                        <polygon points="${targetSize * 0.18},${targetSize * 0.34} ${targetSize * 0.1},${targetSize * 0.28} ${targetSize * 0.1},${targetSize * 0.4}" fill="#ff7a39"/>
+                        <circle cx="${targetSize * 0.35}" cy="${targetSize * 0.32}" r="${targetSize * 0.01}" fill="#27344b"/>
+                        <ellipse cx="${targetSize * 0.66}" cy="${targetSize * 0.46}" rx="${targetSize * 0.11}" ry="${targetSize * 0.07}" fill="url(#fishBlue)"/>
+                        <polygon points="${targetSize * 0.55},${targetSize * 0.46} ${targetSize * 0.48},${targetSize * 0.4} ${targetSize * 0.48},${targetSize * 0.52}" fill="#3f8fd1"/>
+                        <circle cx="${targetSize * 0.7}" cy="${targetSize * 0.44}" r="${targetSize * 0.01}" fill="#27344b"/>
+                        <ellipse cx="${targetSize * 0.48}" cy="${targetSize * 0.64}" rx="${targetSize * 0.13}" ry="${targetSize * 0.08}" fill="url(#fishPink)"/>
+                        <polygon points="${targetSize * 0.35},${targetSize * 0.64} ${targetSize * 0.27},${targetSize * 0.58} ${targetSize * 0.27},${targetSize * 0.7}" fill="#ef5f9d"/>
+                        <circle cx="${targetSize * 0.53}" cy="${targetSize * 0.62}" r="${targetSize * 0.01}" fill="#27344b"/>
+                    </g>
+                    ${bubbles}
+                `;
+            }
+        },
+        cat: {
+            label: "Chat cosy",
+            render(targetSize, detailCount) {
+                const hearts = Array.from({ length: Math.max(6, Math.floor(detailCount / 2)) }, (_, index) => {
+                    const x = 24 + (index * 57) % (targetSize - 48);
+                    const y = 22 + (index * 49) % (targetSize * 0.34);
+                    const size = 8 + (index % 3) * 2;
+                    return `<path d="M ${x} ${y} c -${size * 0.55} -${size * 0.75}, -${size * 1.5} -${size * 0.2}, -${size * 1.5} ${size * 0.65} c 0 ${size * 0.55}, ${size * 0.48} ${size * 1.08}, ${size * 1.5} ${size * 1.72} c ${size * 1.02}-${size * 0.64}, ${size * 1.5}-${size * 1.17}, ${size * 1.5}-${size * 1.72} c 0-${size * 0.85}-${size * 0.95}-${size * 1.4}-${size * 1.5}-${size * 0.65} z" fill="rgba(255,255,255,0.24)"/>`;
+                }).join("");
+
+                return `
+                    <defs>
+                        <linearGradient id="room" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ffe4c5"/>
+                            <stop offset="100%" stop-color="#f0b98d"/>
+                        </linearGradient>
+                        <radialGradient id="catFur" cx="40%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#ffd7b0"/>
+                            <stop offset="100%" stop-color="#cc8b52"/>
+                        </radialGradient>
+                        <linearGradient id="cushion" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#e88996"/>
+                            <stop offset="100%" stop-color="#b94f62"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="${targetSize}" height="${targetSize}" fill="url(#room)"/>
+                    <rect y="${targetSize * 0.72}" width="${targetSize}" height="${targetSize * 0.28}" fill="#d39769"/>
+                    <ellipse cx="${targetSize * 0.5}" cy="${targetSize * 0.74}" rx="${targetSize * 0.28}" ry="${targetSize * 0.13}" fill="url(#cushion)"/>
+                    <g transform="translate(${targetSize * 0.5} ${targetSize * 0.52})">
+                        <ellipse cx="0" cy="${targetSize * 0.08}" rx="${targetSize * 0.2}" ry="${targetSize * 0.16}" fill="url(#catFur)"/>
+                        <circle cx="0" cy="-${targetSize * 0.06}" r="${targetSize * 0.15}" fill="url(#catFur)"/>
+                        <polygon points="-${targetSize * 0.12},-${targetSize * 0.16} -${targetSize * 0.04},-${targetSize * 0.28} -${targetSize * 0.01},-${targetSize * 0.11}" fill="#c27c47"/>
+                        <polygon points="${targetSize * 0.12},-${targetSize * 0.16} ${targetSize * 0.04},-${targetSize * 0.28} ${targetSize * 0.01},-${targetSize * 0.11}" fill="#c27c47"/>
+                        <circle cx="-${targetSize * 0.05}" cy="-${targetSize * 0.06}" r="${targetSize * 0.013}" fill="#27344b"/>
+                        <circle cx="${targetSize * 0.05}" cy="-${targetSize * 0.06}" r="${targetSize * 0.013}" fill="#27344b"/>
+                        <path d="M -${targetSize * 0.03} 0 Q 0 ${targetSize * 0.03} ${targetSize * 0.03} 0" fill="none" stroke="#7d4b2b" stroke-width="${Math.max(2, targetSize * 0.007)}" stroke-linecap="round"/>
+                        <g stroke="#7d4b2b" stroke-width="${Math.max(2, targetSize * 0.005)}" stroke-linecap="round">
+                            <path d="M -${targetSize * 0.05} ${targetSize * 0.01} L -${targetSize * 0.13} -${targetSize * 0.01}"/>
+                            <path d="M -${targetSize * 0.05} ${targetSize * 0.03} L -${targetSize * 0.14} ${targetSize * 0.05}"/>
+                            <path d="M ${targetSize * 0.05} ${targetSize * 0.01} L ${targetSize * 0.13} -${targetSize * 0.01}"/>
+                            <path d="M ${targetSize * 0.05} ${targetSize * 0.03} L ${targetSize * 0.14} ${targetSize * 0.05}"/>
+                        </g>
+                        <path d="M ${targetSize * 0.15} ${targetSize * 0.18} C ${targetSize * 0.28} ${targetSize * 0.05}, ${targetSize * 0.33} ${targetSize * 0.26}, ${targetSize * 0.2} ${targetSize * 0.26}" fill="none" stroke="#c27c47" stroke-width="${Math.max(6, targetSize * 0.016)}" stroke-linecap="round"/>
+                    </g>
+                    ${hearts}
+                `;
+            }
+        }
     };
 
     function escapeHtml(value) {
@@ -228,6 +545,11 @@ document.addEventListener("DOMContentLoaded", () => {
         queensGame.classList.toggle("hidden", gameId !== "queens");
         wikiGame.classList.toggle("hidden", gameId !== "wiki");
         sudokuGame.classList.toggle("hidden", gameId !== "sudoku");
+        puzzleGame.classList.toggle("hidden", gameId !== "puzzle");
+
+        if (gameId !== "puzzle") {
+            stopPuzzleTimer();
+        }
     }
 
     function launchGame(gameId) {
@@ -254,6 +576,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (gameId === "sudoku") {
             initializeSudokuGame();
+        }
+
+        if (gameId === "puzzle") {
+            initializePuzzleGame();
         }
     }
 
@@ -1790,7 +2116,547 @@ document.addEventListener("DOMContentLoaded", () => {
         setSudokuInfoMessage("Nouvelle grille prete. Selectionne une case vide pour commencer.");
     }
 
-    backToHomeButton.addEventListener("click", () => showScreen("home"));
+    function getPuzzleBestTime() {
+        return Number.parseInt(localStorage.getItem(`minigamez_shape_puzzle_bestTime_${puzzleState.size}`) || "", 10);
+    }
+
+    function setPuzzleBestTime(seconds) {
+        localStorage.setItem(`minigamez_shape_puzzle_bestTime_${puzzleState.size}`, String(seconds));
+    }
+
+    function formatPuzzleTime(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function getPuzzleBoardMetrics() {
+        const profiles = {
+            3: {
+                width: 760,
+                height: 636,
+                targetX: 42,
+                targetY: 34,
+                pieceSize: 124,
+                tabSize: 20,
+                trays: [
+                    { x: 458, y: 28, width: 270, height: 226, label: "Reserve" },
+                    { x: 34, y: 450, width: 694, height: 146, label: "Table de tri" }
+                ]
+            },
+            4: {
+                width: 760,
+                height: 650,
+                targetX: 54,
+                targetY: 40,
+                pieceSize: 94,
+                tabSize: 16,
+                trays: [
+                    { x: 458, y: 26, width: 270, height: 270, label: "Reserve" },
+                    { x: 34, y: 450, width: 694, height: 160, label: "Table de tri" }
+                ]
+            },
+            5: {
+                width: 760,
+                height: 684,
+                targetX: 64,
+                targetY: 46,
+                pieceSize: 74,
+                tabSize: 12,
+                trays: [
+                    { x: 456, y: 24, width: 272, height: 316, label: "Reserve" },
+                    { x: 34, y: 432, width: 694, height: 212, label: "Table de tri" }
+                ]
+            }
+        };
+        const profile = profiles[puzzleState.size] || profiles[3];
+        return {
+            ...profile,
+            targetSize: profile.pieceSize * puzzleState.size
+        };
+    }
+
+    function resolvePuzzleArtworkSelection(allowRandomRefresh = false) {
+        const artworkIds = Object.keys(puzzleArtworkCatalog);
+        const requestedArtworkId = puzzleArtworkSelect.value;
+
+        if (requestedArtworkId !== "random" && puzzleArtworkCatalog[requestedArtworkId]) {
+            return requestedArtworkId;
+        }
+
+        if (!allowRandomRefresh && puzzleArtworkCatalog[puzzleState.artworkId]) {
+            return puzzleState.artworkId;
+        }
+
+        return artworkIds[Math.floor(Math.random() * artworkIds.length)];
+    }
+
+    function getPuzzleArtworkUrl() {
+        const cacheKey = `${puzzleState.artworkId}-${puzzleState.size}`;
+        if (puzzleState.artworkCache.has(cacheKey)) {
+            return puzzleState.artworkCache.get(cacheKey);
+        }
+
+        const metrics = getPuzzleBoardMetrics();
+        const targetSize = metrics.targetSize;
+        const artworkConfig = puzzleArtworkCatalog[puzzleState.artworkId] || puzzleArtworkCatalog.bubbles;
+        const detailCount = 10 + puzzleState.size * 3;
+        const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${targetSize}" height="${targetSize}" viewBox="0 0 ${targetSize} ${targetSize}">
+                ${artworkConfig.render(targetSize, detailCount)}
+            </svg>
+        `;
+
+        const artworkUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+        puzzleState.artworkCache.set(cacheKey, artworkUrl);
+        return artworkUrl;
+    }
+
+    function buildPuzzleHorizontalEdge(startX, endX, y, edgeValue, normalDirection, tabSize) {
+        if (edgeValue === 0) {
+            return `L ${endX} ${y}`;
+        }
+
+        const step = Math.sign(endX - startX) || 1;
+        const middleX = (startX + endX) / 2;
+        const offsetY = edgeValue * normalDirection * tabSize;
+        const beforeX = middleX - step * tabSize * 1.1;
+        const afterX = middleX + step * tabSize * 1.1;
+
+        return [
+            `L ${beforeX} ${y}`,
+            `C ${middleX - step * tabSize * 0.7} ${y} ${middleX - step * tabSize * 0.9} ${y + offsetY} ${middleX} ${y + offsetY}`,
+            `C ${middleX + step * tabSize * 0.9} ${y + offsetY} ${middleX + step * tabSize * 0.7} ${y} ${afterX} ${y}`,
+            `L ${endX} ${y}`
+        ].join(" ");
+    }
+
+    function buildPuzzleVerticalEdge(x, startY, endY, edgeValue, normalDirection, tabSize) {
+        if (edgeValue === 0) {
+            return `L ${x} ${endY}`;
+        }
+
+        const step = Math.sign(endY - startY) || 1;
+        const middleY = (startY + endY) / 2;
+        const offsetX = edgeValue * normalDirection * tabSize;
+        const beforeY = middleY - step * tabSize * 1.1;
+        const afterY = middleY + step * tabSize * 1.1;
+
+        return [
+            `L ${x} ${beforeY}`,
+            `C ${x} ${middleY - step * tabSize * 0.7} ${x + offsetX} ${middleY - step * tabSize * 0.9} ${x + offsetX} ${middleY}`,
+            `C ${x + offsetX} ${middleY + step * tabSize * 0.9} ${x} ${middleY + step * tabSize * 0.7} ${x} ${afterY}`,
+            `L ${x} ${endY}`
+        ].join(" ");
+    }
+
+    function buildPuzzlePiecePath(pieceSize, tabSize, edges, leftInset, topInset) {
+        const startX = leftInset;
+        const startY = topInset;
+        const endX = startX + pieceSize;
+        const endY = startY + pieceSize;
+
+        return [
+            `M ${startX} ${startY}`,
+            buildPuzzleHorizontalEdge(startX, endX, startY, edges.top, -1, tabSize),
+            buildPuzzleVerticalEdge(endX, startY, endY, edges.right, 1, tabSize),
+            buildPuzzleHorizontalEdge(endX, startX, endY, edges.bottom, 1, tabSize),
+            buildPuzzleVerticalEdge(startX, endY, startY, edges.left, -1, tabSize),
+            "Z"
+        ].join(" ");
+    }
+
+    function getPuzzlePieceDefinitions() {
+        const metrics = getPuzzleBoardMetrics();
+        const size = puzzleState.size;
+        const edgeGrid = [];
+
+        for (let rowIndex = 0; rowIndex < size; rowIndex += 1) {
+            const rowEdges = [];
+            for (let colIndex = 0; colIndex < size; colIndex += 1) {
+                const top = rowIndex === 0 ? 0 : -edgeGrid[rowIndex - 1][colIndex].bottom;
+                const left = colIndex === 0 ? 0 : -rowEdges[colIndex - 1].right;
+                const right = colIndex === size - 1 ? 0 : ((rowIndex + colIndex) % 2 === 0 ? 1 : -1);
+                const bottom = rowIndex === size - 1 ? 0 : ((rowIndex * 3 + colIndex) % 2 === 0 ? -1 : 1);
+                rowEdges.push({ top, right, bottom, left });
+            }
+            edgeGrid.push(rowEdges);
+        }
+
+        return edgeGrid.flatMap((rowEdges, rowIndex) => rowEdges.map((edges, colIndex) => {
+            const leftInset = edges.left === 1 ? metrics.tabSize : 0;
+            const topInset = edges.top === 1 ? metrics.tabSize : 0;
+            const rightInset = edges.right === 1 ? metrics.tabSize : 0;
+            const bottomInset = edges.bottom === 1 ? metrics.tabSize : 0;
+            const correctX = metrics.targetX + colIndex * metrics.pieceSize - leftInset;
+            const correctY = metrics.targetY + rowIndex * metrics.pieceSize - topInset;
+            const width = metrics.pieceSize + leftInset + rightInset;
+            const height = metrics.pieceSize + topInset + bottomInset;
+
+            return {
+                id: `piece-${rowIndex}-${colIndex}`,
+                width,
+                height,
+                correctX,
+                correctY,
+                backgroundOffsetX: -(correctX - metrics.targetX),
+                backgroundOffsetY: -(correctY - metrics.targetY),
+                path: buildPuzzlePiecePath(metrics.pieceSize, metrics.tabSize, edges, leftInset, topInset)
+            };
+        }));
+    }
+
+    function getPuzzleTraySpots() {
+        const metrics = getPuzzleBoardMetrics();
+        const spots = [];
+        const padding = 18;
+        const cellWidth = metrics.pieceSize * 0.74;
+        const cellHeight = metrics.pieceSize * 0.72;
+
+        metrics.trays.forEach((tray, trayIndex) => {
+            const usableWidth = Math.max(cellWidth, tray.width - padding * 2);
+            const usableHeight = Math.max(cellHeight, tray.height - padding * 2 - (trayIndex === 0 ? 18 : 0));
+            const columnCount = Math.max(1, Math.floor(usableWidth / cellWidth));
+            const rowCount = Math.max(1, Math.floor(usableHeight / cellHeight));
+            const stepX = columnCount > 1 ? (usableWidth - cellWidth) / (columnCount - 1) : 0;
+            const stepY = rowCount > 1 ? (usableHeight - cellHeight) / (rowCount - 1) : 0;
+
+            for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+                for (let colIndex = 0; colIndex < columnCount; colIndex += 1) {
+                    const x = tray.x + padding + colIndex * stepX;
+                    const y = tray.y + padding + (trayIndex === 0 ? 28 : 0) + rowIndex * stepY;
+                    const rotationSeed = (trayIndex * 7 + rowIndex * 3 + colIndex * 5) % 9;
+                    spots.push({
+                        x,
+                        y,
+                        rotation: -10 + rotationSeed * 2.5
+                    });
+                }
+            }
+        });
+
+        return spots;
+    }
+
+    function setPuzzleInfoMessage(message, tone = "") {
+        puzzleInfo.textContent = message;
+        puzzleInfo.className = "info";
+        if (tone) {
+            puzzleInfo.classList.add(tone);
+        }
+    }
+
+    function updatePuzzleStats() {
+        const bestTime = getPuzzleBestTime();
+        const totalPieces = getPuzzlePieceDefinitions().length;
+        puzzleMoveCount.textContent = `${puzzleState.placedCount} / ${totalPieces}`;
+        puzzleElapsedTime.textContent = formatPuzzleTime(puzzleState.elapsedSeconds);
+        puzzleBestTime.textContent = Number.isFinite(bestTime) ? formatPuzzleTime(bestTime) : "-";
+        togglePuzzleHelpButton.textContent = `Silhouette aide : ${puzzleState.helpMode ? "oui" : "non"}`;
+        togglePuzzleHelpButton.classList.toggle("is-active", puzzleState.helpMode);
+    }
+
+    function stopPuzzleTimer() {
+        if (puzzleState.timerId !== null) {
+            window.clearInterval(puzzleState.timerId);
+            puzzleState.timerId = null;
+        }
+    }
+
+    function startPuzzleTimer() {
+        stopPuzzleTimer();
+        if (puzzleState.gameOver) {
+            return;
+        }
+
+        puzzleState.startedAt = Date.now() - puzzleState.elapsedSeconds * 1000;
+        puzzleState.timerId = window.setInterval(() => {
+            puzzleState.elapsedSeconds = Math.floor((Date.now() - puzzleState.startedAt) / 1000);
+            updatePuzzleStats();
+        }, 1000);
+    }
+
+    function shufflePuzzleArray(items) {
+        const nextItems = [...items];
+        for (let index = nextItems.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(Math.random() * (index + 1));
+            [nextItems[index], nextItems[swapIndex]] = [nextItems[swapIndex], nextItems[index]];
+        }
+        return nextItems;
+    }
+
+    function createPuzzlePieces() {
+        const definitions = getPuzzlePieceDefinitions();
+        const traySpots = shufflePuzzleArray(getPuzzleTraySpots());
+        const { width, height } = getPuzzleBoardMetrics();
+
+        puzzleState.pieces = definitions.map((pieceDefinition, index) => ({
+            ...(traySpots[index] || traySpots[index % traySpots.length]),
+            ...pieceDefinition,
+            x: Math.max(12, Math.min(width - pieceDefinition.width - 12, (traySpots[index] || traySpots[index % traySpots.length]).x)),
+            y: Math.max(12, Math.min(height - pieceDefinition.height - 12, (traySpots[index] || traySpots[index % traySpots.length]).y)),
+            rotation: (traySpots[index] || traySpots[index % traySpots.length]).rotation,
+            snapped: false,
+            zIndex: index + 1
+        }));
+        puzzleState.placedCount = 0;
+        puzzleState.activePieceId = "";
+    }
+
+    function getPuzzlePieceById(pieceId) {
+        return puzzleState.pieces.find((piece) => piece.id === pieceId) || null;
+    }
+
+    function getPuzzleBoardPoint(pointerEvent) {
+        const boardRect = puzzleBoard.getBoundingClientRect();
+        const scaleX = puzzleBoard.offsetWidth / boardRect.width || 1;
+        const scaleY = puzzleBoard.offsetHeight / boardRect.height || 1;
+
+        return {
+            x: (pointerEvent.clientX - boardRect.left) * scaleX,
+            y: (pointerEvent.clientY - boardRect.top) * scaleY
+        };
+    }
+
+    function buildPuzzleBoard() {
+        const { width, height } = getPuzzleBoardMetrics();
+        puzzleBoard.style.width = `${width}px`;
+        puzzleBoard.style.height = `${height}px`;
+        puzzleBoard.dataset.puzzleSize = String(puzzleState.size);
+    }
+
+    function renderPuzzleBoard() {
+        const totalPieces = getPuzzlePieceDefinitions().length;
+        const metrics = getPuzzleBoardMetrics();
+        const artworkUrl = getPuzzleArtworkUrl();
+        puzzleBoard.classList.toggle("show-help", puzzleState.helpMode);
+        puzzleBoard.innerHTML = "";
+
+        const stage = document.createElement("div");
+        stage.className = "puzzle-stage";
+        stage.style.left = `${metrics.targetX - 14}px`;
+        stage.style.top = `${metrics.targetY - 14}px`;
+        stage.style.width = `${metrics.targetSize + 28}px`;
+        stage.style.height = `${metrics.targetSize + 28}px`;
+
+        const artwork = document.createElement("div");
+        artwork.className = "puzzle-stage-artwork";
+        artwork.style.left = `${metrics.targetX}px`;
+        artwork.style.top = `${metrics.targetY}px`;
+        artwork.style.width = `${metrics.targetSize}px`;
+        artwork.style.height = `${metrics.targetSize}px`;
+        artwork.style.backgroundImage = `url("${artworkUrl}")`;
+
+        const previewLayer = document.createElement("div");
+        previewLayer.className = "puzzle-preview-layer";
+
+        puzzleState.pieces.forEach((piece) => {
+            const slot = document.createElement("div");
+            slot.className = "puzzle-slot";
+            slot.style.width = `${piece.width}px`;
+            slot.style.height = `${piece.height}px`;
+            slot.style.left = `${piece.correctX}px`;
+            slot.style.top = `${piece.correctY}px`;
+            slot.style.clipPath = `path("${piece.path}")`;
+            slot.style.backgroundImage = `url("${artworkUrl}")`;
+            slot.style.backgroundSize = `${metrics.targetSize}px ${metrics.targetSize}px`;
+            slot.style.backgroundPosition = `${piece.backgroundOffsetX}px ${piece.backgroundOffsetY}px`;
+            previewLayer.appendChild(slot);
+        });
+
+        const pieceLayer = document.createElement("div");
+        pieceLayer.className = "puzzle-piece-layer";
+
+        const trays = metrics.trays.map((trayConfig, trayIndex) => {
+            const tray = document.createElement("div");
+            tray.className = "puzzle-tray";
+            tray.style.left = `${trayConfig.x}px`;
+            tray.style.top = `${trayConfig.y}px`;
+            tray.style.width = `${trayConfig.width}px`;
+            tray.style.height = `${trayConfig.height}px`;
+
+            const trayTitle = document.createElement("p");
+            trayTitle.className = "puzzle-tray-label";
+            trayTitle.textContent = puzzleState.placedCount === totalPieces && trayIndex === 0
+                ? "Dessin reconstruit"
+                : trayConfig.label;
+            tray.appendChild(trayTitle);
+            return tray;
+        });
+
+        puzzleState.pieces.forEach((piece) => {
+            const pieceButton = document.createElement("button");
+            pieceButton.type = "button";
+            pieceButton.className = "puzzle-piece";
+            pieceButton.dataset.puzzlePiece = piece.id;
+            pieceButton.classList.toggle("is-snapped", piece.snapped);
+            pieceButton.style.width = `${piece.width}px`;
+            pieceButton.style.height = `${piece.height}px`;
+            pieceButton.style.left = `${piece.x}px`;
+            pieceButton.style.top = `${piece.y}px`;
+            pieceButton.style.clipPath = `path("${piece.path}")`;
+            pieceButton.style.backgroundImage = `url("${artworkUrl}")`;
+            pieceButton.style.backgroundSize = `${metrics.targetSize}px ${metrics.targetSize}px`;
+            pieceButton.style.backgroundPosition = `${piece.backgroundOffsetX}px ${piece.backgroundOffsetY}px`;
+            pieceButton.style.setProperty("--piece-rotation", `${piece.snapped ? 0 : piece.rotation}deg`);
+            pieceButton.style.zIndex = String(piece.snapped ? 4 : piece.zIndex);
+            pieceButton.setAttribute("aria-label", `Piece ${piece.id}`);
+            pieceLayer.appendChild(pieceButton);
+        });
+
+        puzzleBoard.append(stage, artwork, previewLayer, ...trays, pieceLayer);
+        updatePuzzleStats();
+    }
+
+    function finishPuzzleGame() {
+        puzzleState.gameOver = true;
+        stopPuzzleTimer();
+
+        const bestTime = getPuzzleBestTime();
+        if (!Number.isFinite(bestTime) || puzzleState.elapsedSeconds < bestTime) {
+            setPuzzleBestTime(puzzleState.elapsedSeconds);
+        }
+
+        renderPuzzleBoard();
+        setPuzzleInfoMessage(`Bravo, ${puzzleState.artworkLabel.toLowerCase()} est reconstruit en ${formatPuzzleTime(puzzleState.elapsedSeconds)}.`, "success");
+    }
+
+    function initializePuzzleGame(forceNew = false) {
+        const requestedSize = Number.parseInt(puzzleSizeSelect.value, 10) || 3;
+        const sizeChanged = requestedSize !== puzzleState.size;
+        const requestedArtworkChoice = puzzleArtworkSelect.value;
+        const artworkChanged = requestedArtworkChoice !== "random" && requestedArtworkChoice !== puzzleState.artworkId;
+        puzzleState.size = requestedSize;
+
+        if (!forceNew && !sizeChanged && !artworkChanged && puzzleState.pieces.length > 0) {
+            buildPuzzleBoard();
+            renderPuzzleBoard();
+            if (!puzzleState.gameOver) {
+                startPuzzleTimer();
+            }
+            return;
+        }
+
+        const resolvedArtworkId = resolvePuzzleArtworkSelection(forceNew && requestedArtworkChoice === "random");
+        const resolvedArtwork = puzzleArtworkCatalog[resolvedArtworkId] || puzzleArtworkCatalog.bubbles;
+        puzzleState.artworkId = resolvedArtworkId;
+        puzzleState.artworkLabel = resolvedArtwork.label;
+        puzzleState.elapsedSeconds = 0;
+        puzzleState.gameOver = false;
+        puzzleState.helpMode = false;
+        createPuzzlePieces();
+        buildPuzzleBoard();
+        renderPuzzleBoard();
+        startPuzzleTimer();
+        setPuzzleInfoMessage(`Glisse les pieces des reserves vers ${puzzleState.artworkLabel.toLowerCase()} en ${puzzleState.size} x ${puzzleState.size}.`);
+    }
+
+    function handlePuzzlePointerDown(event) {
+        const pieceButton = event.target.closest("[data-puzzle-piece]");
+        if (!pieceButton || puzzleGame.classList.contains("hidden") || puzzleState.gameOver) {
+            return;
+        }
+
+        const piece = getPuzzlePieceById(pieceButton.dataset.puzzlePiece);
+        if (!piece || piece.snapped) {
+            return;
+        }
+
+        piece.zIndex = Math.max(...puzzleState.pieces.map((currentPiece) => currentPiece.zIndex)) + 1;
+        const pointerPoint = getPuzzleBoardPoint(event);
+        puzzleState.activePieceId = piece.id;
+        puzzleState.dragOffsetX = pointerPoint.x - piece.x;
+        puzzleState.dragOffsetY = pointerPoint.y - piece.y;
+        pieceButton.classList.add("is-dragging");
+        pieceButton.style.zIndex = "30";
+        event.preventDefault();
+    }
+
+    function handlePuzzlePointerMove(event) {
+        if (!puzzleState.activePieceId) {
+            return;
+        }
+
+        const piece = getPuzzlePieceById(puzzleState.activePieceId);
+        if (!piece) {
+            return;
+        }
+
+        const pointerPoint = getPuzzleBoardPoint(event);
+        const { width, height } = getPuzzleBoardMetrics();
+        piece.x = Math.max(12, Math.min(width - piece.width - 12, pointerPoint.x - puzzleState.dragOffsetX));
+        piece.y = Math.max(12, Math.min(height - piece.height - 12, pointerPoint.y - puzzleState.dragOffsetY));
+
+        const pieceButton = puzzleBoard.querySelector(`[data-puzzle-piece="${piece.id}"]`);
+        if (pieceButton) {
+            pieceButton.style.left = `${piece.x}px`;
+            pieceButton.style.top = `${piece.y}px`;
+        }
+    }
+
+    function handlePuzzlePointerUp() {
+        if (!puzzleState.activePieceId) {
+            return;
+        }
+
+        const piece = getPuzzlePieceById(puzzleState.activePieceId);
+        puzzleState.activePieceId = "";
+
+        if (!piece) {
+            renderPuzzleBoard();
+            return;
+        }
+
+        const distance = Math.hypot(piece.x - piece.correctX, piece.y - piece.correctY);
+        if (distance <= 34) {
+            piece.x = piece.correctX;
+            piece.y = piece.correctY;
+            piece.rotation = 0;
+            piece.snapped = true;
+            puzzleState.placedCount = puzzleState.pieces.filter((currentPiece) => currentPiece.snapped).length;
+            renderPuzzleBoard();
+
+            if (puzzleState.placedCount === puzzleState.pieces.length) {
+                finishPuzzleGame();
+            } else {
+                setPuzzleInfoMessage("Piece bien placee. Continue jusqu'a reconstituer toute l'image.", "success");
+            }
+            return;
+        }
+
+        renderPuzzleBoard();
+    }
+
+    function handlePuzzleKeydown(event) {
+        if (puzzleGame.classList.contains("hidden")) {
+            return;
+        }
+
+        const activeElement = document.activeElement;
+        if (
+            activeElement &&
+            (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || activeElement.isContentEditable)
+        ) {
+            return;
+        }
+
+        if (event.key.toLowerCase() === "h") {
+            event.preventDefault();
+            puzzleState.helpMode = !puzzleState.helpMode;
+            renderPuzzleBoard();
+            return;
+        }
+
+        if (event.key.toLowerCase() === "r") {
+            event.preventDefault();
+            initializePuzzleGame(true);
+        }
+    }
+
+    backToHomeButton.addEventListener("click", () => {
+        stopPuzzleTimer();
+        showScreen("home");
+    });
     themeToggleButtons.forEach((button) => button.addEventListener("click", toggleTheme));
     boardSizeSelect.addEventListener("change", initializeKnightBoard);
     newGameButton.addEventListener("click", initializeKnightBoard);
@@ -1812,11 +2678,24 @@ document.addEventListener("DOMContentLoaded", () => {
     sudokuNumberPad.addEventListener("click", handleSudokuPadClick);
     sudokuCandidates.addEventListener("click", handleSudokuPadClick);
     window.addEventListener("keydown", handleSudokuKeydown);
+    puzzleSizeSelect.addEventListener("change", () => initializePuzzleGame(true));
+    puzzleArtworkSelect.addEventListener("change", () => initializePuzzleGame(true));
+    newPuzzleGameButton.addEventListener("click", () => initializePuzzleGame(true));
+    togglePuzzleHelpButton.addEventListener("click", () => {
+        puzzleState.helpMode = !puzzleState.helpMode;
+        renderPuzzleBoard();
+    });
+    puzzleBoard.addEventListener("pointerdown", handlePuzzlePointerDown);
+    window.addEventListener("pointermove", handlePuzzlePointerMove);
+    window.addEventListener("pointerup", handlePuzzlePointerUp);
+    window.addEventListener("pointercancel", handlePuzzlePointerUp);
+    window.addEventListener("keydown", handlePuzzleKeydown);
 
     renderGames();
     applyTheme(getInitialTheme());
     showGamePanel("");
     renderWikiText();
     buildSudokuNumberPad();
+    updatePuzzleStats();
     showScreen("home");
 });

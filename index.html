@@ -270,6 +270,61 @@
                             Complete la grille sans doublon sur chaque ligne, colonne et carre 3x3.
                         </div>
                     </section>
+
+                    <section class="game-card hidden" id="puzzleGame">
+                        <div class="game-header">
+                            <div>
+                                <p class="panel-kicker">Jeu jouable</p>
+                                <h3>Puzzle rapide</h3>
+                            </div>
+                            <p class="game-description">
+                                Deplace les pieces et recompose le dessin final. Les pieces s'aimantent a leur bonne place quand tu approches.
+                            </p>
+                        </div>
+
+                        <div class="controls puzzle-controls">
+                            <label for="puzzleSize">Taille</label>
+                            <select id="puzzleSize">
+                                <option value="3" selected>3 x 3</option>
+                                <option value="4">4 x 4</option>
+                                <option value="5">5 x 5</option>
+                            </select>
+                            <label for="puzzleArtwork">Dessin</label>
+                            <select id="puzzleArtwork">
+                                <option value="random" selected>Aleatoire</option>
+                                <option value="bubbles">Bulles pop</option>
+                                <option value="garden">Jardin</option>
+                                <option value="rocket">Fusee</option>
+                                <option value="aquarium">Aquarium</option>
+                                <option value="cat">Chat cosy</option>
+                            </select>
+                            <button id="newPuzzleGame" type="button">Nouveau puzzle</button>
+                            <button id="togglePuzzleHelp" type="button">Silhouette aide : non</button>
+                        </div>
+
+                        <div class="stats puzzle-stats">
+                            <div class="stat-pill">
+                                <span class="stat-label">Pieces placees</span>
+                                <span class="stat-value" id="puzzleMoveCount">0 / 0</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Temps</span>
+                                <span class="stat-value" id="puzzleElapsedTime">00:00</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Meilleur temps</span>
+                                <span class="stat-value" id="puzzleBestTime">-</span>
+                            </div>
+                        </div>
+
+                        <div class="board-frame puzzle-frame">
+                            <div class="puzzle-board" id="puzzleBoard" aria-label="Puzzle rapide"></div>
+                        </div>
+
+                        <div class="info" id="puzzleInfo">
+                            Glisse les pieces vers la silhouette pour refaire le dessin.
+                        </div>
+                    </section>
                 </main>
             </div>
         </section>
