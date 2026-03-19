@@ -15,6 +15,13 @@ document.addEventListener("DOMContentLoaded", () => {
             available: true
         },
         {
+            id: "wiki",
+            title: "Wiki masque",
+            description: "Devine un article Wikipedia mot par mot en revelant son premier paragraphe.",
+            status: "Nouveau",
+            available: true
+        },
+        {
             id: "snake",
             title: "Snake",
             description: "Une version maison du serpent, a faire grandir sans heurter les murs.",
@@ -57,6 +64,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const queensGridNumber = document.getElementById("queensGridNumber");
     const queensInfo = document.getElementById("queensInfo");
 
+    const wikiGame = document.getElementById("wikiGame");
+    const wikiTitle = document.getElementById("wikiTitle");
+    const loadWikiPageButton = document.getElementById("loadWikiPage");
+    const wikiGuessForm = document.getElementById("wikiGuessForm");
+    const wikiGuessInput = document.getElementById("wikiGuessInput");
+    const submitWikiGuessButton = document.getElementById("submitWikiGuess");
+    const wikiTitleProgress = document.getElementById("wikiTitleProgress");
+    const wikiRevealedCount = document.getElementById("wikiRevealedCount");
+    const wikiAttemptCount = document.getElementById("wikiAttemptCount");
+    const wikiText = document.getElementById("wikiText");
+    const wikiAnswer = document.getElementById("wikiAnswer");
+    const wikiInfo = document.getElementById("wikiInfo");
+
     const knightState = {
         knightPosition: { row: 0, col: 0 },
         visitedSquares: new Set(),
@@ -70,6 +90,20 @@ document.addEventListener("DOMContentLoaded", () => {
         gameOver: false,
         puzzle: null,
         gridNumber: 1
+    };
+
+    const wikiState = {
+        isLoading: false,
+        isSolved: false,
+        title: "",
+        url: "",
+        paragraphs: [],
+        titleTokens: [],
+        tokensByParagraph: [],
+        availableWords: new Set(),
+        revealedWords: new Set(),
+        attemptedWords: new Set(),
+        relatedTitleWords: new Map()
     };
 
     function escapeHtml(value) {
@@ -132,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function showGamePanel(gameId) {
         knightGame.classList.toggle("hidden", gameId !== "knight");
         queensGame.classList.toggle("hidden", gameId !== "queens");
+        wikiGame.classList.toggle("hidden", gameId !== "wiki");
     }
 
     function launchGame(gameId) {
@@ -150,6 +185,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (gameId === "queens") {
             initializeQueensBoard();
+        }
+
+        if (gameId === "wiki") {
+            initializeWikiGame();
         }
     }
 
@@ -675,6 +714,483 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshQueensBoard("Case vide.");
     }
 
+    function setWikiInfoMessage(message, tone = "") {
+        wikiInfo.textContent = message;
+        wikiInfo.className = "info";
+        if (tone) {
+            wikiInfo.classList.add(tone);
+        }
+    }
+
+    function normalizeWikiWord(value) {
+        return value
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .toLowerCase();
+    }
+
+    function tokenizeWikiText(text) {
+        return text.match(/[\p{L}\p{N}]+(?:['\u2019-][\p{L}\p{N}]+)*|[^\p{L}\p{N}]+/gu) || [];
+    }
+
+    function extractWikiGuessWords(value) {
+        return value.match(/[\p{L}\p{N}]+(?:['\u2019-][\p{L}\p{N}]+)*/gu) || [];
+    }
+
+    function isWikiWordToken(token) {
+        return /[\p{L}\p{N}]/u.test(token);
+    }
+
+    function getWikiTokenLetterCount(token) {
+        return (token.match(/[\p{L}\p{N}]/gu) || []).length;
+    }
+
+    function createWikiHiddenWordMarkup(token) {
+        const letterCount = getWikiTokenLetterCount(token);
+
+        return `<button class="wiki-word wiki-word-button is-hidden" type="button" data-word-length="${letterCount}" style="--word-length: ${letterCount};" aria-label="Mot masque de ${letterCount} lettres"></button>`;
+    }
+
+    function createWikiRelatedWordMarkup(word) {
+        return `<span class="wiki-word is-related">${escapeHtml(word)}</span>`;
+    }
+
+    function normalizeWikiPhrase(value) {
+        return value
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .toLowerCase()
+            .replace(/[^\p{L}\p{N}]+/gu, " ")
+            .trim()
+            .replace(/\s+/g, " ");
+    }
+
+    function resetWikiProgress() {
+        wikiState.isSolved = false;
+        wikiState.revealedWords.clear();
+        wikiState.attemptedWords.clear();
+        wikiState.relatedTitleWords.clear();
+        wikiAnswer.classList.add("hidden");
+        wikiAnswer.innerHTML = "";
+        wikiGuessInput.value = "";
+    }
+
+    function computeLevenshteinDistance(source, target) {
+        if (source === target) {
+            return 0;
+        }
+
+        if (source.length === 0) {
+            return target.length;
+        }
+
+        if (target.length === 0) {
+            return source.length;
+        }
+
+        const previousRow = Array.from({ length: target.length + 1 }, (_, index) => index);
+        const currentRow = new Array(target.length + 1);
+
+        for (let sourceIndex = 0; sourceIndex < source.length; sourceIndex += 1) {
+            currentRow[0] = sourceIndex + 1;
+
+            for (let targetIndex = 0; targetIndex < target.length; targetIndex += 1) {
+                const substitutionCost = source[sourceIndex] === target[targetIndex] ? 0 : 1;
+                currentRow[targetIndex + 1] = Math.min(
+                    currentRow[targetIndex] + 1,
+                    previousRow[targetIndex + 1] + 1,
+                    previousRow[targetIndex] + substitutionCost
+                );
+            }
+
+            for (let index = 0; index < previousRow.length; index += 1) {
+                previousRow[index] = currentRow[index];
+            }
+        }
+
+        return previousRow[target.length];
+    }
+
+    function isRelatedWikiWord(guessWord, titleWord) {
+        if (guessWord.length < 2 || titleWord.length < 2) {
+            return false;
+        }
+
+        if (guessWord === titleWord) {
+            return false;
+        }
+
+        if (guessWord.length >= 4 && titleWord.includes(guessWord)) {
+            return true;
+        }
+
+        if (titleWord.length >= 4 && guessWord.includes(titleWord)) {
+            return true;
+        }
+
+        if (guessWord.length >= 3 && titleWord.length >= 3) {
+            const guessPrefix = guessWord.slice(0, 4);
+            const titlePrefix = titleWord.slice(0, 4);
+            if (guessPrefix === titlePrefix) {
+                return true;
+            }
+        }
+
+        const maxDistance = Math.max(1, Math.floor(Math.min(guessWord.length, titleWord.length) / 4));
+        return computeLevenshteinDistance(guessWord, titleWord) <= maxDistance;
+    }
+
+    function registerRelatedTitleGuess(guessWord) {
+        let relatedMatchCount = 0;
+
+        wikiState.titleTokens.forEach((token) => {
+            if (!isWikiWordToken(token)) {
+                return;
+            }
+
+            const normalizedToken = normalizeWikiWord(token);
+            if (wikiState.revealedWords.has(normalizedToken)) {
+                return;
+            }
+
+            if (!isRelatedWikiWord(guessWord, normalizedToken)) {
+                return;
+            }
+
+            const currentRelatedWord = wikiState.relatedTitleWords.get(normalizedToken);
+            if (!currentRelatedWord) {
+                wikiState.relatedTitleWords.set(normalizedToken, guessWord);
+                relatedMatchCount += 1;
+                return;
+            }
+
+            const currentDistance = computeLevenshteinDistance(currentRelatedWord, normalizedToken);
+            const nextDistance = computeLevenshteinDistance(guessWord, normalizedToken);
+            if (nextDistance < currentDistance) {
+                wikiState.relatedTitleWords.set(normalizedToken, guessWord);
+                relatedMatchCount += 1;
+            }
+        });
+
+        return relatedMatchCount;
+    }
+
+    function setWikiLoadingState(isLoading) {
+        wikiState.isLoading = isLoading;
+        loadWikiPageButton.disabled = isLoading;
+        submitWikiGuessButton.disabled = isLoading || wikiState.tokensByParagraph.length === 0;
+        wikiGuessInput.disabled = isLoading || wikiState.tokensByParagraph.length === 0;
+    }
+
+    function getWikiStats() {
+        let totalWords = 0;
+        let revealedCount = 0;
+
+        wikiState.tokensByParagraph.forEach((tokens) => {
+            tokens.forEach((token) => {
+                if (!isWikiWordToken(token)) {
+                    return;
+                }
+
+                totalWords += 1;
+                if (wikiState.revealedWords.has(normalizeWikiWord(token))) {
+                    revealedCount += 1;
+                }
+            });
+        });
+
+        return { totalWords, revealedCount };
+    }
+
+    function getWikiTitleStats() {
+        let totalWords = 0;
+        let revealedCount = 0;
+
+        wikiState.titleTokens.forEach((token) => {
+            if (!isWikiWordToken(token)) {
+                return;
+            }
+
+            totalWords += 1;
+            if (wikiState.revealedWords.has(normalizeWikiWord(token))) {
+                revealedCount += 1;
+            }
+        });
+
+        return { totalWords, revealedCount };
+    }
+
+    function updateWikiStats() {
+        const textStats = getWikiStats();
+        const titleStats = getWikiTitleStats();
+        wikiTitleProgress.textContent = `${titleStats.revealedCount} / ${titleStats.totalWords}`;
+        wikiRevealedCount.textContent = `${textStats.revealedCount} / ${textStats.totalWords}`;
+        wikiAttemptCount.textContent = String(wikiState.attemptedWords.size);
+    }
+
+    function renderWikiTitle() {
+        if (wikiState.titleTokens.length === 0) {
+            wikiTitle.innerHTML = "";
+            return;
+        }
+
+        const titleMarkup = wikiState.titleTokens.map((token) => {
+            if (!isWikiWordToken(token)) {
+                return escapeHtml(token);
+            }
+
+            const normalizedToken = normalizeWikiWord(token);
+            const isRevealed = wikiState.revealedWords.has(normalizedToken);
+
+            if (isRevealed) {
+                return `<span class="wiki-word is-revealed is-title-word">${escapeHtml(token)}</span>`;
+            }
+
+            const relatedWord = wikiState.relatedTitleWords.get(normalizedToken);
+            if (relatedWord) {
+                return createWikiRelatedWordMarkup(relatedWord);
+            }
+
+            return createWikiHiddenWordMarkup(token);
+        }).join("");
+
+        wikiTitle.innerHTML = titleMarkup;
+    }
+
+    function renderWikiText() {
+        if (wikiState.tokensByParagraph.length === 0) {
+            renderWikiTitle();
+            wikiText.innerHTML = '<p class="wiki-placeholder">Charge un article pour commencer.</p>';
+            updateWikiStats();
+            setWikiLoadingState(wikiState.isLoading);
+            return;
+        }
+
+        const markup = wikiState.tokensByParagraph.map((tokens) => {
+            const paragraphMarkup = tokens.map((token) => {
+                if (!isWikiWordToken(token)) {
+                    return escapeHtml(token);
+                }
+
+                const normalizedToken = normalizeWikiWord(token);
+                const isRevealed = wikiState.revealedWords.has(normalizedToken);
+
+                if (isRevealed) {
+                    return `<span class="wiki-word is-revealed">${escapeHtml(token)}</span>`;
+                }
+
+                return createWikiHiddenWordMarkup(token);
+            }).join("");
+
+            return `<p class="wiki-paragraph">${paragraphMarkup}</p>`;
+        }).join("");
+
+        renderWikiTitle();
+        wikiText.innerHTML = markup;
+        updateWikiStats();
+        setWikiLoadingState(wikiState.isLoading);
+    }
+
+    async function fetchRandomWikipediaParagraph(retryCount = 0) {
+        const response = await fetch(
+            "https://fr.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=1&prop=extracts|info&inprop=url&exintro=1&explaintext=1&format=json&origin=*"
+        );
+
+        if (!response.ok) {
+            throw new Error("Wikipedia n'a pas repondu correctement.");
+        }
+
+        const data = await response.json();
+        const pages = Object.values(data.query?.pages || {});
+        const article = pages[0];
+        const paragraphs = (article?.extract || "")
+            .split(/\n\s*\n/)
+            .map((paragraph) => paragraph.trim())
+            .filter(Boolean);
+        const firstParagraph = paragraphs[0] || "";
+        const paragraphWordCount = tokenizeWikiText(firstParagraph).filter(isWikiWordToken).length;
+
+        if ((!firstParagraph || paragraphWordCount < 18) && retryCount < 5) {
+            return fetchRandomWikipediaParagraph(retryCount + 1);
+        }
+
+        if (!firstParagraph) {
+            throw new Error("Impossible de trouver un article exploitable pour le moment.");
+        }
+
+        return {
+            title: article.title,
+            url: article.fullurl || `https://fr.wikipedia.org/?curid=${article.pageid}`,
+            paragraph: firstParagraph
+        };
+    }
+
+    function applyWikiArticle(article) {
+        wikiState.title = article.title;
+        wikiState.url = article.url;
+        wikiState.paragraphs = [article.paragraph];
+        wikiState.titleTokens = tokenizeWikiText(article.title);
+        wikiState.tokensByParagraph = wikiState.paragraphs.map(tokenizeWikiText);
+        wikiState.availableWords = new Set(
+            [...wikiState.titleTokens, ...wikiState.tokensByParagraph.flat()]
+                .filter(isWikiWordToken)
+                .map((token) => normalizeWikiWord(token))
+        );
+
+        resetWikiProgress();
+        renderWikiText();
+    }
+
+    function revealWikiAnswer() {
+        wikiAnswer.innerHTML = `<p>Article trouve : <a href="${escapeHtml(wikiState.url)}" target="_blank" rel="noreferrer">${escapeHtml(wikiState.title)}</a></p>`;
+        wikiAnswer.classList.remove("hidden");
+    }
+
+    async function loadRandomWikiArticle() {
+        wikiState.isSolved = false;
+        wikiState.title = "";
+        wikiState.url = "";
+        wikiState.paragraphs = [];
+        wikiState.titleTokens = [];
+        wikiState.tokensByParagraph = [];
+        wikiState.availableWords = new Set();
+        resetWikiProgress();
+        wikiText.innerHTML = '<p class="wiki-placeholder">Chargement d\'un article aleatoire...</p>';
+        wikiTitle.innerHTML = "";
+        setWikiLoadingState(true);
+        setWikiInfoMessage("Chargement d'un article Wikipedia aleatoire...");
+
+        try {
+            const article = await fetchRandomWikipediaParagraph();
+            applyWikiArticle(article);
+            setWikiInfoMessage("Article charge. Devine le titre en testant des mots ou une proposition complete.");
+            wikiGuessInput.focus();
+        } catch (error) {
+            wikiText.innerHTML = '<p class="wiki-placeholder">Impossible de charger Wikipedia pour le moment.</p>';
+            setWikiInfoMessage("Le chargement a echoue. Reessaie dans un instant.", "warning");
+        } finally {
+            setWikiLoadingState(false);
+        }
+    }
+
+    function initializeWikiGame() {
+        if (wikiState.tokensByParagraph.length === 0 && !wikiState.isLoading) {
+            loadRandomWikiArticle();
+            return;
+        }
+
+        renderWikiText();
+        if (wikiState.isSolved) {
+            setWikiInfoMessage(`Titre trouve : "${wikiState.title}".`, "success");
+            return;
+        }
+
+        setWikiInfoMessage("Trouve le nom de la page. Chaque essai revele les mots correspondants.");
+    }
+
+    function handleWikiGuessSubmit(event) {
+        event.preventDefault();
+
+        if (wikiState.isLoading || wikiState.tokensByParagraph.length === 0 || wikiState.isSolved) {
+            return;
+        }
+
+        const rawGuess = wikiGuessInput.value.trim();
+        const normalizedPhrase = normalizeWikiPhrase(rawGuess);
+        const guessWords = extractWikiGuessWords(wikiGuessInput.value);
+        if (!normalizedPhrase) {
+            setWikiInfoMessage("Entre au moins un mot ou une proposition de titre.", "warning");
+            return;
+        }
+
+        const { revealedCount: revealedBefore } = getWikiStats();
+        const titleStatsBefore = getWikiTitleStats();
+        let matchedWords = 0;
+        let relatedWords = 0;
+
+        guessWords.forEach((word) => {
+            const normalizedWord = normalizeWikiWord(word);
+            if (!normalizedWord) {
+                return;
+            }
+
+            wikiState.attemptedWords.add(normalizedWord);
+            if (wikiState.availableWords.has(normalizedWord) && !wikiState.revealedWords.has(normalizedWord)) {
+                wikiState.revealedWords.add(normalizedWord);
+                matchedWords += 1;
+                return;
+            }
+
+            relatedWords += registerRelatedTitleGuess(normalizedWord);
+        });
+
+        if (normalizedPhrase === normalizeWikiPhrase(wikiState.title)) {
+            wikiState.isSolved = true;
+            wikiState.titleTokens
+                .filter(isWikiWordToken)
+                .forEach((token) => wikiState.revealedWords.add(normalizeWikiWord(token)));
+        }
+
+        wikiGuessInput.value = "";
+        renderWikiText();
+
+        const { totalWords, revealedCount } = getWikiStats();
+        const titleStatsAfter = getWikiTitleStats();
+        const revealedNow = revealedCount - revealedBefore;
+        const revealedTitleNow = titleStatsAfter.revealedCount - titleStatsBefore.revealedCount;
+
+        if (wikiState.isSolved || (titleStatsAfter.revealedCount === titleStatsAfter.totalWords && titleStatsAfter.totalWords > 0)) {
+            wikiState.isSolved = true;
+            revealWikiAnswer();
+            setWikiInfoMessage(`Bravo, tu as trouve le titre : "${wikiState.title}".`, "success");
+            return;
+        }
+
+        if (matchedWords > 0) {
+            const parts = [];
+            if (revealedTitleNow > 0) {
+                parts.push(`${revealedTitleNow} mot(s) reveles dans le titre`);
+            }
+            if (revealedNow > 0) {
+                parts.push(`${revealedNow} mot(s) reveles dans le texte`);
+            }
+            if (relatedWords > 0) {
+                parts.push(`${relatedWords} mot(s) proches du titre`);
+            }
+
+            setWikiInfoMessage(`${parts.join(" et ")}. Continue.`, "success");
+            return;
+        }
+
+        if (relatedWords > 0) {
+            setWikiInfoMessage(`${relatedWords} mot(s) proches du titre affiches en gris.`, "success");
+            return;
+        }
+
+        setWikiInfoMessage("Aucune occurrence trouvee dans le titre ou le texte.", "warning");
+    }
+
+    function handleWikiWordHintClick(event) {
+        const hiddenWordButton = event.target.closest(".wiki-word-button.is-hidden");
+        if (!hiddenWordButton) {
+            return;
+        }
+
+        const letterCount = hiddenWordButton.dataset.wordLength || "0";
+        hiddenWordButton.textContent = letterCount;
+        hiddenWordButton.classList.add("show-hint");
+
+        if (hiddenWordButton.hintTimeoutId) {
+            clearTimeout(hiddenWordButton.hintTimeoutId);
+        }
+
+        hiddenWordButton.hintTimeoutId = window.setTimeout(() => {
+            hiddenWordButton.textContent = "";
+            hiddenWordButton.classList.remove("show-hint");
+            hiddenWordButton.hintTimeoutId = null;
+        }, 2400);
+    }
+
     backToHomeButton.addEventListener("click", () => showScreen("home"));
     boardSizeSelect.addEventListener("change", initializeKnightBoard);
     newGameButton.addEventListener("click", initializeKnightBoard);
@@ -683,8 +1199,12 @@ document.addEventListener("DOMContentLoaded", () => {
         generateQueensPuzzle(true);
         initializeQueensBoard("Nouveau quadrillage 7x7 genere. Il reste realisable.");
     });
+    loadWikiPageButton.addEventListener("click", loadRandomWikiArticle);
+    wikiGuessForm.addEventListener("submit", handleWikiGuessSubmit);
+    wikiText.addEventListener("click", handleWikiWordHintClick);
 
     renderGames();
     showGamePanel("");
+    renderWikiText();
     showScreen("home");
 });

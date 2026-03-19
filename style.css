@@ -8,15 +8,15 @@
     --square-size: 50px;
     --bg: #f6efe3;
     --bg-deep: #eadfcf;
-    --surface: rgba(255, 250, 242, 0.82);
-    --surface-strong: #fffaf2;
+    --surface: rgba(255, 250, 242, 0.9);
+    --surface-strong: #fffdf8;
     --surface-muted: #f1e4cf;
     --text: #23160d;
-    --text-soft: #625246;
+    --text-soft: #4d3f34;
     --accent: #c95f36;
-    --accent-dark: #934021;
+    --accent-dark: #7f3419;
     --accent-alt: #2d6a57;
-    --border: rgba(35, 22, 13, 0.12);
+    --border: rgba(35, 22, 13, 0.18);
     --shadow: 0 18px 55px rgba(74, 44, 19, 0.12);
     --radius-xl: 28px;
     --radius-lg: 20px;
@@ -38,7 +38,8 @@ body {
 }
 
 button,
-select {
+select,
+input {
     font: inherit;
 }
 
@@ -266,6 +267,36 @@ select {
     background: var(--surface);
 }
 
+#wikiGame {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+}
+
+#wikiGame .game-header,
+#wikiGame .controls,
+#wikiGame .stats,
+#wikiGame .wiki-title-card,
+#wikiGame .board-frame,
+#wikiGame .wiki-answer,
+#wikiGame .info {
+    margin-top: 0;
+}
+
+#wikiGame .game-header,
+#wikiGame .controls {
+    grid-column: 1 / -1;
+}
+
+#wikiGame .stats,
+#wikiGame .wiki-title-card,
+#wikiGame .board-frame,
+#wikiGame .wiki-answer,
+#wikiGame .info {
+    grid-column: 2;
+}
+
 .sidebar-games {
     margin-top: 18px;
 }
@@ -313,7 +344,8 @@ select {
 }
 
 .controls select,
-.controls button {
+.controls button,
+.controls input {
     padding: 12px 16px;
     border-radius: 999px;
     border: 1px solid var(--border);
@@ -321,11 +353,28 @@ select {
     color: var(--text);
 }
 
+.controls input::placeholder {
+    color: #79695d;
+}
+
+.controls input:focus,
+.controls select:focus,
+.controls button:focus {
+    outline: 2px solid rgba(45, 106, 87, 0.28);
+    outline-offset: 2px;
+}
+
 .controls button {
     background: var(--accent-alt);
     color: white;
     border-color: transparent;
     cursor: pointer;
+}
+
+.controls button[disabled],
+.controls input[disabled] {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .stats {
@@ -345,8 +394,9 @@ select {
 
 .stat-label {
     display: block;
-    color: var(--text-soft);
+    color: #5b4b3f;
     font-size: 0.86rem;
+    font-weight: 600;
 }
 
 .stat-value {
@@ -354,6 +404,7 @@ select {
     margin-top: 4px;
     font-size: 1.4rem;
     font-weight: 700;
+    color: var(--text);
 }
 
 .board-frame {
@@ -366,6 +417,10 @@ select {
 
 .queens-frame {
     background: linear-gradient(180deg, rgba(255, 249, 240, 0.98), rgba(244, 233, 214, 0.98));
+}
+
+.wiki-frame {
+    background: linear-gradient(180deg, rgba(255, 249, 240, 0.98), rgba(242, 233, 220, 0.98));
 }
 
 .board {
@@ -482,10 +537,175 @@ select {
     line-height: 1.7;
 }
 
+#wikiGame .controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    gap: 16px;
+}
+
+.wiki-guess-form {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
+.wiki-title-card {
+    padding: 18px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(35, 22, 13, 0.14);
+    background: rgba(255, 252, 247, 0.96);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.wiki-title {
+    margin-top: 6px;
+    min-height: 52px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.9rem, 5vw, 2.9rem);
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+}
+
+.wiki-guess-form label {
+    font-weight: 700;
+}
+
+.wiki-input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.wiki-input-row input {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+#wikiGame .stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+}
+
+#wikiGame .stat-pill {
+    min-width: 0;
+    min-height: 94px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.wiki-text-card,
+.wiki-answer {
+    padding: 22px;
+    border-radius: 20px;
+    background: rgba(255, 252, 247, 0.96);
+    border: 1px solid rgba(35, 22, 13, 0.12);
+}
+
+.wiki-text-card {
+    min-height: 180px;
+}
+
+.wiki-paragraph,
+.wiki-placeholder {
+    white-space: normal;
+    line-height: 2.2;
+    font-size: 1.04rem;
+    color: var(--text);
+}
+
+.wiki-paragraph + .wiki-paragraph {
+    margin-top: 16px;
+}
+
+.wiki-word {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    border-radius: 8px;
+    transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.wiki-word-button {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+}
+
+.wiki-word.is-hidden {
+    min-width: calc(var(--word-length, 1) * 0.64ch + 18px);
+    min-height: 1.9rem;
+    padding: 0 10px;
+    background: #343434;
+    color: transparent;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.wiki-word.is-hidden:hover {
+    transform: translateY(-1px);
+    background: #2c2c2c;
+}
+
+.wiki-word.is-hidden.show-hint {
+    color: #5be0ff;
+    font-weight: 700;
+}
+
+.wiki-word.is-revealed {
+    min-height: 1.9rem;
+    padding: 0 10px;
+    color: #ffffff;
+    background: var(--accent-alt);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.wiki-word.is-related {
+    min-height: 1.9rem;
+    padding: 0 10px;
+    color: #fffaf2;
+    background: #5b5b5b;
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.wiki-title .wiki-word {
+    margin-bottom: 6px;
+}
+
+.wiki-title .wiki-word.is-hidden {
+    min-height: 2.4rem;
+    border-radius: 10px;
+}
+
+.wiki-title .wiki-word.is-revealed {
+    min-height: 2.4rem;
+    padding: 0 12px;
+}
+
+.wiki-title .wiki-word.is-related {
+    min-height: 2.4rem;
+    padding: 0 12px;
+    border-radius: 10px;
+}
+
+.wiki-answer {
+    margin-top: 18px;
+}
+
+.wiki-answer a {
+    color: var(--accent-alt);
+    font-weight: 700;
+    text-decoration-thickness: 2px;
+}
+
 .info {
     min-height: 28px;
     margin-top: 18px;
-    color: var(--text-soft);
+    color: #4e4035;
     line-height: 1.6;
 }
 
@@ -536,6 +756,27 @@ select {
     .sidebar-card,
     .game-card {
         padding: 20px;
+    }
+
+    #wikiGame .controls {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    #wikiGame {
+        grid-template-columns: 1fr;
+    }
+
+    #wikiGame .stats,
+    #wikiGame .wiki-title-card,
+    #wikiGame .board-frame,
+    #wikiGame .wiki-answer,
+    #wikiGame .info {
+        grid-column: 1;
+    }
+
+    #wikiGame .stats {
+        grid-template-columns: 1fr;
     }
 }
 
