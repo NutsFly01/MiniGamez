@@ -10,7 +10,10 @@
     <div class="page-shell">
         <section class="screen screen-home" id="homeScreen">
             <header class="hero">
-                <p class="eyebrow">Arcade maison</p>
+                <div class="hero-toolbar">
+                    <p class="eyebrow">Arcade maison</p>
+                    <button class="ghost-button theme-toggle" data-theme-toggle type="button">Mode sombre : non</button>
+                </div>
                 <h1>MiniGamez</h1>
                 <p class="hero-copy">
                     Choisis le jeu.
@@ -31,7 +34,10 @@
 
         <section class="screen screen-game hidden" id="gameScreen">
             <div class="game-topbar">
-                <button class="ghost-button" id="backToHome" type="button">Retour a l'accueil</button>
+                <div class="game-topbar-actions">
+                    <button class="ghost-button" id="backToHome" type="button">Retour a l'accueil</button>
+                    <button class="ghost-button theme-toggle" data-theme-toggle type="button">Mode sombre : non</button>
+                </div>
                 <div class="game-title-block">
                     <p class="panel-kicker">En cours</p>
                     <h2 id="activeGameTitle">Jeu du Cavalier</h2>

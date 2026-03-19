@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const themeStorageKey = "minigamez_theme";
     const games = [
         {
             id: "knight",
@@ -53,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidebarGames = document.getElementById("sidebarGames");
     const activeGameTitle = document.getElementById("activeGameTitle");
     const backToHomeButton = document.getElementById("backToHome");
+    const themeToggleButtons = Array.from(document.querySelectorAll("[data-theme-toggle]"));
 
     const knightGame = document.getElementById("knightGame");
     const knightBoard = document.getElementById("chessboard");
@@ -147,6 +149,30 @@ document.addEventListener("DOMContentLoaded", () => {
             .replaceAll(">", "&gt;")
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#39;");
+    }
+
+    function applyTheme(theme) {
+        document.body.dataset.theme = theme;
+        const isDark = theme === "dark";
+        themeToggleButtons.forEach((button) => {
+            button.textContent = `Mode sombre : ${isDark ? "oui" : "non"}`;
+            button.setAttribute("aria-pressed", String(isDark));
+        });
+    }
+
+    function getInitialTheme() {
+        const storedTheme = localStorage.getItem(themeStorageKey);
+        if (storedTheme === "light" || storedTheme === "dark") {
+            return storedTheme;
+        }
+
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function toggleTheme() {
+        const nextTheme = document.body.dataset.theme === "dark" ? "light" : "dark";
+        localStorage.setItem(themeStorageKey, nextTheme);
+        applyTheme(nextTheme);
     }
 
     function renderGames() {
@@ -1765,6 +1791,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     backToHomeButton.addEventListener("click", () => showScreen("home"));
+    themeToggleButtons.forEach((button) => button.addEventListener("click", toggleTheme));
     boardSizeSelect.addEventListener("change", initializeKnightBoard);
     newGameButton.addEventListener("click", initializeKnightBoard);
     resetQueensButton.addEventListener("click", () => initializeQueensBoard("Quadrillage reinitialise."));
@@ -1787,6 +1814,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("keydown", handleSudokuKeydown);
 
     renderGames();
+    applyTheme(getInitialTheme());
     showGamePanel("");
     renderWikiText();
     buildSudokuNumberPad();

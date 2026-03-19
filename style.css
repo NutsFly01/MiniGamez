@@ -38,6 +38,29 @@ body {
         linear-gradient(135deg, var(--bg) 0%, #f9f3ea 45%, var(--bg-deep) 100%);
 }
 
+body[data-theme="dark"] {
+    --bg: #141618;
+    --bg-deep: #1d2024;
+    --surface: rgba(25, 29, 34, 0.9);
+    --surface-strong: #22272d;
+    --surface-muted: #2b3138;
+    --text: #f3eadc;
+    --text-soft: #c4b6a5;
+    --accent: #d9734d;
+    --accent-dark: #f09a74;
+    --accent-alt: #66b095;
+    --border: rgba(243, 234, 220, 0.14);
+    --shadow: 0 18px 55px rgba(0, 0, 0, 0.34);
+    --tile-dark: #2a3139;
+    --tile-light: #39424c;
+    --tile-visited: #a85f49;
+    --tile-highlight: #5a8e7a;
+    background:
+        radial-gradient(circle at top left, rgba(217, 115, 77, 0.12), transparent 32%),
+        radial-gradient(circle at right 20% top 20%, rgba(102, 176, 149, 0.12), transparent 26%),
+        linear-gradient(135deg, #101214 0%, var(--bg) 48%, var(--bg-deep) 100%);
+}
+
 button,
 select,
 input {
@@ -77,6 +100,12 @@ input {
         linear-gradient(120deg, rgba(201, 95, 54, 0.18), rgba(45, 106, 87, 0.08));
 }
 
+body[data-theme="dark"] .hero {
+    background:
+        linear-gradient(135deg, rgba(31, 36, 42, 0.96), rgba(28, 32, 37, 0.92)),
+        linear-gradient(120deg, rgba(217, 115, 77, 0.14), rgba(102, 176, 149, 0.08));
+}
+
 .hero::after {
     content: "";
     position: absolute;
@@ -85,6 +114,27 @@ input {
     height: 220px;
     background: radial-gradient(circle, rgba(201, 95, 54, 0.2), transparent 65%);
     pointer-events: none;
+}
+
+body[data-theme="dark"] .hero::after {
+    background: radial-gradient(circle, rgba(217, 115, 77, 0.14), transparent 68%);
+}
+
+.hero-toolbar,
+.game-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hero-toolbar {
+    justify-content: space-between;
+}
+
+.theme-toggle {
+    width: auto;
+    white-space: nowrap;
 }
 
 .eyebrow,
@@ -165,14 +215,34 @@ input {
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
+body[data-theme="dark"] .game-option,
+body[data-theme="dark"] .sidebar-game-item,
+body[data-theme="dark"] .rules-card,
+body[data-theme="dark"] .wiki-title-card,
+body[data-theme="dark"] .wiki-text-card,
+body[data-theme="dark"] .wiki-answer,
+body[data-theme="dark"] .sudoku-tools-card {
+    background: rgba(31, 36, 42, 0.96);
+    border-color: rgba(243, 234, 220, 0.1);
+}
+
 .game-option:hover {
     transform: translateY(-4px);
     box-shadow: 0 18px 45px rgba(74, 44, 19, 0.12);
     border-color: rgba(201, 95, 54, 0.35);
 }
 
+body[data-theme="dark"] .game-option:hover {
+    border-color: rgba(217, 115, 77, 0.38);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
 .game-option.coming-soon {
     background: rgba(241, 228, 207, 0.72);
+}
+
+body[data-theme="dark"] .game-option.coming-soon {
+    background: rgba(41, 36, 33, 0.9);
 }
 
 .card-badge {
@@ -185,6 +255,11 @@ input {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+body[data-theme="dark"] .card-badge {
+    background: rgba(102, 176, 149, 0.16);
+    color: #93d4be;
 }
 
 .game-option.coming-soon .card-badge {
@@ -242,11 +317,21 @@ input {
     border-color: var(--border);
 }
 
+body[data-theme="dark"] .ghost-button {
+    background: rgba(34, 39, 45, 0.96);
+}
+
 .disabled-button {
     background: rgba(99, 82, 70, 0.1);
     color: var(--text-soft);
     border-color: rgba(99, 82, 70, 0.12);
     cursor: not-allowed;
+}
+
+body[data-theme="dark"] .disabled-button,
+body[data-theme="dark"] .sidebar-button[disabled] {
+    background: rgba(255, 255, 255, 0.06);
+    color: #9f9488;
 }
 
 .screen-game {
@@ -358,6 +443,10 @@ input {
     color: #79695d;
 }
 
+body[data-theme="dark"] .controls input::placeholder {
+    color: #aa9d8d;
+}
+
 .controls input:focus,
 .controls select:focus,
 .controls button:focus {
@@ -400,6 +489,10 @@ input {
     font-weight: 600;
 }
 
+body[data-theme="dark"] .stat-label {
+    color: #c9b9aa;
+}
+
 .stat-value {
     display: block;
     margin-top: 4px;
@@ -414,6 +507,10 @@ input {
     border-radius: 24px;
     background: linear-gradient(180deg, rgba(255, 250, 242, 0.95), rgba(241, 228, 207, 0.95));
     overflow-x: auto;
+}
+
+body[data-theme="dark"] .board-frame {
+    background: linear-gradient(180deg, rgba(32, 37, 43, 0.98), rgba(28, 32, 37, 0.98));
 }
 
 .queens-frame {
@@ -448,6 +545,10 @@ input {
     background: #4d3a30;
 }
 
+body[data-theme="dark"] .square:nth-child(even) {
+    background: var(--tile-light);
+}
+
 .square:hover {
     transform: translateY(-1px);
     background: var(--tile-highlight);
@@ -455,6 +556,11 @@ input {
 
 .square.visited {
     background: var(--tile-visited);
+}
+
+body[data-theme="dark"] .square.visited {
+    background: #d98c72;
+    box-shadow: inset 0 0 0 2px rgba(255, 242, 223, 0.22);
 }
 
 .square.invalid {
@@ -471,6 +577,10 @@ input {
     padding: 4px;
     border-radius: 18px;
     background: rgba(82, 60, 46, 0.22);
+}
+
+body[data-theme="dark"] .queens-board {
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .queens-cell {
@@ -536,6 +646,10 @@ input {
     padding-left: 18px;
     color: var(--text-soft);
     line-height: 1.7;
+}
+
+body[data-theme="dark"] .queens-cell.has-cross {
+    color: rgba(243, 234, 220, 0.72);
 }
 
 #wikiGame .controls {
@@ -629,6 +743,10 @@ input {
     background: linear-gradient(180deg, rgba(255, 249, 240, 0.98), rgba(241, 231, 214, 0.98));
 }
 
+body[data-theme="dark"] .sudoku-frame {
+    background: linear-gradient(180deg, rgba(33, 38, 44, 0.98), rgba(27, 31, 36, 0.98));
+}
+
 .sudoku-board {
     gap: 0;
     padding: 6px;
@@ -636,6 +754,10 @@ input {
     background: rgba(123, 97, 79, 0.18);
     grid-template-columns: repeat(9, var(--sudoku-cell-size));
     grid-template-rows: repeat(9, var(--sudoku-cell-size));
+}
+
+body[data-theme="dark"] .sudoku-board {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .sudoku-cell {
@@ -655,17 +777,33 @@ input {
     transition: background-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
 }
 
+body[data-theme="dark"] .sudoku-cell {
+    background: rgba(36, 42, 49, 0.96);
+}
+
 .sudoku-cell:hover {
     transform: translateY(-1px);
     background: #fffdf8;
+}
+
+body[data-theme="dark"] .sudoku-cell:hover {
+    background: #2b323a;
 }
 
 .sudoku-cell.is-peer {
     background: rgba(212, 231, 222, 0.62);
 }
 
+body[data-theme="dark"] .sudoku-cell.is-peer {
+    background: rgba(79, 116, 102, 0.32);
+}
+
 .sudoku-cell.is-same-value {
     background: rgba(201, 95, 54, 0.14);
+}
+
+body[data-theme="dark"] .sudoku-cell.is-same-value {
+    background: rgba(217, 115, 77, 0.18);
 }
 
 .sudoku-cell.is-selected {
@@ -673,9 +811,18 @@ input {
     box-shadow: inset 0 0 0 2px rgba(45, 106, 87, 0.6);
 }
 
+body[data-theme="dark"] .sudoku-cell.is-selected {
+    background: rgba(102, 176, 149, 0.2);
+    box-shadow: inset 0 0 0 2px rgba(102, 176, 149, 0.62);
+}
+
 .sudoku-cell.is-fixed .sudoku-value {
     color: #2a1c12;
     font-weight: 800;
+}
+
+body[data-theme="dark"] .sudoku-cell.is-fixed .sudoku-value {
+    color: #fff2df;
 }
 
 .sudoku-value {
@@ -693,6 +840,10 @@ input {
     color: #77685c;
     font-size: 0.66rem;
     line-height: 1;
+}
+
+body[data-theme="dark"] .sudoku-notes {
+    color: #b8aa9a;
 }
 
 .sudoku-note {
@@ -745,6 +896,12 @@ input {
     color: var(--text);
     cursor: pointer;
     transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+body[data-theme="dark"] .sudoku-candidate-button,
+body[data-theme="dark"] .sudoku-pad-button {
+    background: #272d33;
+    border-color: rgba(243, 234, 220, 0.08);
 }
 
 .sudoku-candidate-button:hover,
@@ -844,9 +1001,17 @@ input {
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
 
+body[data-theme="dark"] .wiki-word.is-hidden {
+    background: #59616b;
+}
+
 .wiki-word.is-hidden:hover {
     transform: translateY(-1px);
     background: #2c2c2c;
+}
+
+body[data-theme="dark"] .wiki-word.is-hidden:hover {
+    background: #656e79;
 }
 
 .wiki-word.is-hidden.show-hint {
@@ -868,6 +1033,10 @@ input {
     color: #fffaf2;
     background: #5b5b5b;
     box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="dark"] .wiki-word.is-related {
+    background: #707984;
 }
 
 .wiki-title .wiki-word {
@@ -907,6 +1076,10 @@ input {
     line-height: 1.6;
 }
 
+body[data-theme="dark"] .info {
+    color: #cfbead;
+}
+
 .info.success {
     color: var(--accent-alt);
     font-weight: 700;
@@ -944,6 +1117,12 @@ input {
     .game-topbar,
     .game-header {
         flex-direction: column;
+    }
+
+    .hero-toolbar,
+    .game-topbar-actions {
+        width: 100%;
+        justify-content: space-between;
     }
 
     .hero {
