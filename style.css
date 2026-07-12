@@ -1417,6 +1417,11 @@ body[data-theme="dark"] .petitbac-input::placeholder {
     color: var(--accent-dark);
 }
 
+.petitbac-mark.checking {
+    color: var(--text-soft);
+    animation: petitbac-pulse 1s infinite;
+}
+
 .petitbac-mark.is-toggleable {
     cursor: pointer;
     border-color: currentColor;
