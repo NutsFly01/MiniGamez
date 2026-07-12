@@ -1326,6 +1326,111 @@ body[data-theme="dark"] .info {
     font-weight: 700;
 }
 
+.petitbac-letter-value {
+    color: var(--accent);
+    font-size: 1.9rem;
+}
+
+.petitbac-time-urgent {
+    color: var(--accent-dark);
+    animation: petitbac-pulse 1s infinite;
+}
+
+.petitbac-frame {
+    background: linear-gradient(180deg, rgba(255, 249, 240, 0.98), rgba(244, 233, 214, 0.98));
+}
+
+.petitbac-board {
+    display: grid;
+    gap: 10px;
+}
+
+.petitbac-row {
+    display: grid;
+    grid-template-columns: 170px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface-strong);
+}
+
+.petitbac-row.is-valid {
+    border-color: rgba(45, 106, 87, 0.55);
+}
+
+.petitbac-row.is-invalid {
+    border-color: rgba(127, 52, 25, 0.4);
+}
+
+.petitbac-label {
+    font-weight: 700;
+    color: var(--text-soft);
+}
+
+.petitbac-input {
+    min-width: 0;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.petitbac-input::placeholder {
+    color: #79695d;
+}
+
+body[data-theme="dark"] .petitbac-input::placeholder {
+    color: #aa9d8d;
+}
+
+.petitbac-input:focus {
+    outline: 2px solid rgba(45, 106, 87, 0.28);
+    outline-offset: 2px;
+}
+
+.petitbac-input[disabled] {
+    opacity: 0.75;
+}
+
+.petitbac-mark {
+    justify-self: end;
+    min-width: 44px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--text-soft);
+}
+
+.petitbac-mark.valid {
+    background: rgba(45, 106, 87, 0.16);
+    color: var(--accent-alt);
+}
+
+.petitbac-mark.invalid {
+    background: rgba(127, 52, 25, 0.12);
+    color: var(--accent-dark);
+}
+
+.petitbac-mark.is-toggleable {
+    cursor: pointer;
+    border-color: currentColor;
+}
+
+.petitbac-mark[disabled] {
+    cursor: default;
+}
+
+@keyframes petitbac-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
 @keyframes rise-in {
     from {
         opacity: 0;
@@ -1428,5 +1533,13 @@ body[data-theme="dark"] .info {
 
     .sudoku-tools-card {
         padding: 16px;
+    }
+
+    .petitbac-row {
+        grid-template-columns: 1fr auto;
+    }
+
+    .petitbac-label {
+        grid-column: 1 / -1;
     }
 }

@@ -11,6 +11,7 @@ No dependencies, no framework — just plain **HTML, CSS, and vanilla JavaScript
 | 📖 **Wiki Reveal** | Guess the title of a Wikipedia page by submitting words that get revealed in the title and the first paragraph. |
 | 🔢 **Sudoku** | Classic Sudoku with three difficulty levels, notes mode, cell highlighting, and a hint system. |
 | 🧩 **Quick Puzzle** | Rebuild a picture by sliding pieces that snap into place when they get close. Multiple sizes and artworks available. |
+| 🔤 **Petit Bac** | The classic French categories game: a random letter, eight categories, one timer. Find a word for each category before time runs out. |
 ---
 ## ✨ Features
 - 🌙 Dark mode

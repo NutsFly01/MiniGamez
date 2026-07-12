@@ -37,6 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
             available: true
         },
         {
+            id: "petitbac",
+            title: "Petit Bac",
+            description: "Une lettre, huit categories, un chrono : trouve un mot par categorie avant la fin du temps.",
+            status: "Nouveau",
+            available: true
+        },
+        {
             id: "snake",
             title: "Snake",
             description: "Une version maison du serpent, a faire grandir sans heurter les murs.",
@@ -117,6 +124,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const puzzleBestTime = document.getElementById("puzzleBestTime");
     const puzzleInfo = document.getElementById("puzzleInfo");
 
+    const petitbacGame = document.getElementById("petitbacGame");
+    const petitbacBoard = document.getElementById("petitbacBoard");
+    const petitbacDurationSelect = document.getElementById("petitbacDuration");
+    const newPetitbacRoundButton = document.getElementById("newPetitbacRound");
+    const stopPetitbacRoundButton = document.getElementById("stopPetitbacRound");
+    const petitbacLetterElement = document.getElementById("petitbacLetter");
+    const petitbacTimeLeftElement = document.getElementById("petitbacTimeLeft");
+    const petitbacRoundScoreElement = document.getElementById("petitbacRoundScore");
+    const petitbacBestScoreElement = document.getElementById("petitbacBestScore");
+    const petitbacInfo = document.getElementById("petitbacInfo");
+
     const knightState = {
         knightPosition: { row: 0, col: 0 },
         visitedSquares: new Set(),
@@ -174,6 +192,28 @@ document.addEventListener("DOMContentLoaded", () => {
         dragOffsetX: 0,
         dragOffsetY: 0,
         artworkCache: new Map()
+    };
+
+    const petitbacCategories = [
+        { id: "prenom", label: "Prenom", placeholder: "Exemple : Lea, Bruno..." },
+        { id: "animal", label: "Animal", placeholder: "Exemple : loutre, aigle..." },
+        { id: "ville", label: "Ville", placeholder: "Exemple : Lyon, Oslo..." },
+        { id: "pays", label: "Pays", placeholder: "Exemple : Bresil, Italie..." },
+        { id: "metier", label: "Metier", placeholder: "Exemple : boulanger, avocate..." },
+        { id: "fruit", label: "Fruit ou legume", placeholder: "Exemple : ananas, radis..." },
+        { id: "objet", label: "Objet", placeholder: "Exemple : lampe, ciseaux..." },
+        { id: "celebrite", label: "Celebrite", placeholder: "Exemple : Zidane, Piaf..." }
+    ];
+
+    const petitbacLetterPool = "ABCDEFGHIJLMNOPRSTV";
+
+    const petitbacState = {
+        letter: "",
+        phase: "idle",
+        remainingSeconds: 0,
+        timerId: null,
+        results: new Map(),
+        roundScore: 0
     };
 
     const puzzleArtworkCatalog = {
@@ -546,9 +586,14 @@ document.addEventListener("DOMContentLoaded", () => {
         wikiGame.classList.toggle("hidden", gameId !== "wiki");
         sudokuGame.classList.toggle("hidden", gameId !== "sudoku");
         puzzleGame.classList.toggle("hidden", gameId !== "puzzle");
+        petitbacGame.classList.toggle("hidden", gameId !== "petitbac");
 
         if (gameId !== "puzzle") {
             stopPuzzleTimer();
+        }
+
+        if (gameId !== "petitbac") {
+            stopPetitbacTimer();
         }
     }
 
@@ -580,6 +625,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (gameId === "puzzle") {
             initializePuzzleGame();
+        }
+
+        if (gameId === "petitbac") {
+            initializePetitbacGame();
         }
     }
 
@@ -2659,6 +2708,274 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     themeToggleButtons.forEach((button) => button.addEventListener("click", toggleTheme));
     boardSizeSelect.addEventListener("change", initializeKnightBoard);
+    function normalizePetitbacText(value) {
+        return value
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .toLowerCase()
+            .trim();
+    }
+
+    function setPetitbacInfoMessage(message, tone = "") {
+        petitbacInfo.textContent = message;
+        petitbacInfo.className = "info";
+        if (tone) {
+            petitbacInfo.classList.add(tone);
+        }
+    }
+
+    function getPetitbacBestScoreKey() {
+        return `minigamez_petitbac_bestScore_${petitbacDurationSelect.value}`;
+    }
+
+    function loadPetitbacBestScore() {
+        const storedBest = localStorage.getItem(getPetitbacBestScoreKey());
+        petitbacBestScoreElement.textContent = storedBest ? `${storedBest} pts` : "-";
+    }
+
+    function updatePetitbacBestScore() {
+        const storedBest = Number.parseInt(localStorage.getItem(getPetitbacBestScoreKey()) || "0", 10);
+        if (petitbacState.roundScore > storedBest) {
+            localStorage.setItem(getPetitbacBestScoreKey(), String(petitbacState.roundScore));
+        }
+        loadPetitbacBestScore();
+    }
+
+    function formatPetitbacTime(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function stopPetitbacTimer() {
+        if (petitbacState.timerId !== null) {
+            clearInterval(petitbacState.timerId);
+            petitbacState.timerId = null;
+        }
+    }
+
+    function buildPetitbacBoard() {
+        const rowsMarkup = petitbacCategories.map((category) => `
+            <div class="petitbac-row" data-category="${category.id}">
+                <label class="petitbac-label" for="petitbac-input-${category.id}">${escapeHtml(category.label)}</label>
+                <input
+                    id="petitbac-input-${category.id}"
+                    class="petitbac-input"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="${escapeHtml(category.placeholder)}"
+                    disabled
+                >
+                <button class="petitbac-mark" type="button" disabled aria-label="Resultat ${escapeHtml(category.label)}"></button>
+            </div>
+        `).join("");
+
+        petitbacBoard.innerHTML = rowsMarkup;
+
+        petitbacBoard.querySelectorAll(".petitbac-input").forEach((input, index, inputs) => {
+            input.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") {
+                    return;
+                }
+
+                event.preventDefault();
+                if (index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                } else if (petitbacState.phase === "running") {
+                    finishPetitbacRound();
+                }
+            });
+        });
+
+        petitbacBoard.querySelectorAll(".petitbac-mark").forEach((markButton) => {
+            markButton.addEventListener("click", handlePetitbacMarkClick);
+        });
+    }
+
+    function updatePetitbacTimeDisplay() {
+        petitbacTimeLeftElement.textContent = formatPetitbacTime(petitbacState.remainingSeconds);
+        petitbacTimeLeftElement.classList.toggle(
+            "petitbac-time-urgent",
+            petitbacState.phase === "running" && petitbacState.remainingSeconds <= 10
+        );
+    }
+
+    function startPetitbacRound() {
+        stopPetitbacTimer();
+
+        petitbacState.letter = petitbacLetterPool[Math.floor(Math.random() * petitbacLetterPool.length)];
+        petitbacState.phase = "running";
+        petitbacState.remainingSeconds = Number.parseInt(petitbacDurationSelect.value, 10);
+        petitbacState.results.clear();
+        petitbacState.roundScore = 0;
+
+        petitbacLetterElement.textContent = petitbacState.letter;
+        petitbacRoundScoreElement.textContent = "0";
+        stopPetitbacRoundButton.disabled = false;
+        newPetitbacRoundButton.textContent = "Relancer une manche";
+        loadPetitbacBestScore();
+        updatePetitbacTimeDisplay();
+
+        petitbacBoard.querySelectorAll(".petitbac-row").forEach((row) => {
+            row.classList.remove("is-valid", "is-invalid");
+            const input = row.querySelector(".petitbac-input");
+            const markButton = row.querySelector(".petitbac-mark");
+            input.value = "";
+            input.disabled = false;
+            markButton.disabled = true;
+            markButton.textContent = "";
+            markButton.classList.remove("valid", "invalid", "is-toggleable");
+        });
+
+        const firstInput = petitbacBoard.querySelector(".petitbac-input");
+        if (firstInput) {
+            firstInput.focus();
+        }
+
+        setPetitbacInfoMessage(`C'est parti ! Trouve des mots qui commencent par la lettre ${petitbacState.letter}.`);
+
+        petitbacState.timerId = setInterval(() => {
+            petitbacState.remainingSeconds -= 1;
+            updatePetitbacTimeDisplay();
+
+            if (petitbacState.remainingSeconds <= 0) {
+                finishPetitbacRound(true);
+            }
+        }, 1000);
+    }
+
+    function evaluatePetitbacAnswer(value) {
+        const normalizedAnswer = normalizePetitbacText(value);
+        if (!normalizedAnswer) {
+            return "empty";
+        }
+
+        return normalizedAnswer.startsWith(petitbacState.letter.toLowerCase()) ? "accepted" : "wrong-letter";
+    }
+
+    function recomputePetitbacScore() {
+        let score = 0;
+        petitbacState.results.forEach((result) => {
+            if (result === "accepted") {
+                score += 2;
+            }
+        });
+
+        petitbacState.roundScore = score;
+        petitbacRoundScoreElement.textContent = String(score);
+        updatePetitbacBestScore();
+    }
+
+    function renderPetitbacMark(row, result) {
+        const markButton = row.querySelector(".petitbac-mark");
+        const isAccepted = result === "accepted";
+        const isToggleable = result === "accepted" || result === "refused";
+
+        row.classList.toggle("is-valid", isAccepted);
+        row.classList.toggle("is-invalid", !isAccepted);
+        markButton.classList.toggle("valid", isAccepted);
+        markButton.classList.toggle("invalid", !isAccepted);
+        markButton.classList.toggle("is-toggleable", isToggleable);
+        markButton.disabled = !isToggleable;
+
+        if (isAccepted) {
+            markButton.textContent = "✓ 2 pts";
+            markButton.title = "Clique pour refuser ce mot";
+        } else if (result === "refused") {
+            markButton.textContent = "✗ refuse";
+            markButton.title = "Clique pour reaccepter ce mot";
+        } else if (result === "wrong-letter") {
+            markButton.textContent = "✗ mauvaise lettre";
+            markButton.title = "";
+        } else {
+            markButton.textContent = "✗ vide";
+            markButton.title = "";
+        }
+    }
+
+    function handlePetitbacMarkClick(event) {
+        if (petitbacState.phase !== "review") {
+            return;
+        }
+
+        const row = event.currentTarget.closest(".petitbac-row");
+        const categoryId = row.dataset.category;
+        const currentResult = petitbacState.results.get(categoryId);
+
+        if (currentResult !== "accepted" && currentResult !== "refused") {
+            return;
+        }
+
+        const nextResult = currentResult === "accepted" ? "refused" : "accepted";
+        petitbacState.results.set(categoryId, nextResult);
+        renderPetitbacMark(row, nextResult);
+        recomputePetitbacScore();
+    }
+
+    function finishPetitbacRound(isTimeout = false) {
+        if (petitbacState.phase !== "running") {
+            return;
+        }
+
+        stopPetitbacTimer();
+        petitbacState.phase = "review";
+        petitbacState.remainingSeconds = Math.max(petitbacState.remainingSeconds, 0);
+        stopPetitbacRoundButton.disabled = true;
+        updatePetitbacTimeDisplay();
+
+        petitbacBoard.querySelectorAll(".petitbac-row").forEach((row) => {
+            const input = row.querySelector(".petitbac-input");
+            input.disabled = true;
+
+            const result = evaluatePetitbacAnswer(input.value);
+            petitbacState.results.set(row.dataset.category, result);
+            renderPetitbacMark(row, result);
+        });
+
+        recomputePetitbacScore();
+
+        const maxScore = petitbacCategories.length * 2;
+        const openingMessage = isTimeout ? "Temps ecoule !" : "Manche terminee !";
+        const tone = petitbacState.roundScore >= maxScore ? "success" : "";
+        setPetitbacInfoMessage(
+            `${openingMessage} Score : ${petitbacState.roundScore} / ${maxScore} points. Clique sur une coche pour refuser un mot invente.`,
+            tone
+        );
+    }
+
+    function initializePetitbacGame() {
+        stopPetitbacTimer();
+        petitbacState.phase = "idle";
+        petitbacState.letter = "";
+        petitbacState.results.clear();
+        petitbacState.roundScore = 0;
+
+        if (!petitbacBoard.children.length) {
+            buildPetitbacBoard();
+        }
+
+        petitbacBoard.querySelectorAll(".petitbac-row").forEach((row) => {
+            row.classList.remove("is-valid", "is-invalid");
+            const input = row.querySelector(".petitbac-input");
+            const markButton = row.querySelector(".petitbac-mark");
+            input.value = "";
+            input.disabled = true;
+            markButton.disabled = true;
+            markButton.textContent = "";
+            markButton.classList.remove("valid", "invalid", "is-toggleable");
+        });
+
+        petitbacLetterElement.textContent = "-";
+        petitbacTimeLeftElement.textContent = "--";
+        petitbacTimeLeftElement.classList.remove("petitbac-time-urgent");
+        petitbacRoundScoreElement.textContent = "0";
+        stopPetitbacRoundButton.disabled = true;
+        newPetitbacRoundButton.textContent = "Nouvelle manche";
+        loadPetitbacBestScore();
+        setPetitbacInfoMessage("Lance une manche pour tirer une lettre au sort.");
+    }
+
     newGameButton.addEventListener("click", initializeKnightBoard);
     resetQueensButton.addEventListener("click", () => initializeQueensBoard("Quadrillage reinitialise."));
     changeQueensGridButton.addEventListener("click", () => {
@@ -2690,6 +3007,14 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("pointerup", handlePuzzlePointerUp);
     window.addEventListener("pointercancel", handlePuzzlePointerUp);
     window.addEventListener("keydown", handlePuzzleKeydown);
+    newPetitbacRoundButton.addEventListener("click", startPetitbacRound);
+    stopPetitbacRoundButton.addEventListener("click", () => finishPetitbacRound(false));
+    petitbacDurationSelect.addEventListener("change", () => {
+        loadPetitbacBestScore();
+        if (petitbacState.phase === "idle") {
+            petitbacTimeLeftElement.textContent = "--";
+        }
+    });
 
     renderGames();
     applyTheme(getInitialTheme());

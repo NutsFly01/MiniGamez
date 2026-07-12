@@ -271,6 +271,67 @@
                         </div>
                     </section>
 
+                    <section class="game-card hidden" id="petitbacGame">
+                        <div class="game-header">
+                            <div>
+                                <p class="panel-kicker">Jeu jouable</p>
+                                <h3>Petit Bac</h3>
+                            </div>
+                            <p class="game-description">
+                                Une lettre est tiree au sort : trouve un mot par categorie commencant par cette lettre avant la fin du chrono.
+                            </p>
+                        </div>
+
+                        <div class="controls petitbac-controls">
+                            <label for="petitbacDuration">Duree de la manche</label>
+                            <select id="petitbacDuration">
+                                <option value="30">30 secondes</option>
+                                <option value="60" selected>60 secondes</option>
+                                <option value="90">90 secondes</option>
+                                <option value="120">120 secondes</option>
+                            </select>
+                            <button id="newPetitbacRound" type="button">Nouvelle manche</button>
+                            <button id="stopPetitbacRound" type="button" disabled>J'ai fini !</button>
+                        </div>
+
+                        <div class="stats petitbac-stats">
+                            <div class="stat-pill">
+                                <span class="stat-label">Lettre</span>
+                                <span class="stat-value petitbac-letter-value" id="petitbacLetter">-</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Temps restant</span>
+                                <span class="stat-value" id="petitbacTimeLeft">--</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Score de la manche</span>
+                                <span class="stat-value" id="petitbacRoundScore">0</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Meilleur score</span>
+                                <span class="stat-value" id="petitbacBestScore">-</span>
+                            </div>
+                        </div>
+
+                        <div class="board-frame petitbac-frame">
+                            <div class="petitbac-board" id="petitbacBoard"></div>
+                        </div>
+
+                        <div class="rules-card">
+                            <h4>Regles</h4>
+                            <ul class="rules-list">
+                                <li>Chaque reponse doit commencer par la lettre tiree au sort.</li>
+                                <li>Une reponse valide rapporte 2 points, soit 16 points maximum.</li>
+                                <li>A la fin de la manche, clique sur une coche pour refuser un mot invente (ou le reaccepter).</li>
+                                <li>Appuie sur Entree pour passer a la categorie suivante.</li>
+                            </ul>
+                        </div>
+
+                        <div class="info" id="petitbacInfo">
+                            Lance une manche pour tirer une lettre au sort.
+                        </div>
+                    </section>
+
                     <section class="game-card hidden" id="puzzleGame">
                         <div class="game-header">
                             <div>
