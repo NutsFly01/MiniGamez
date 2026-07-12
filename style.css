@@ -1426,6 +1426,108 @@ body[data-theme="dark"] .petitbac-input::placeholder {
     cursor: default;
 }
 
+.petitbac-chain {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 22px 14px;
+    text-align: center;
+}
+
+.petitbac-chain-question {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.petitbac-chain-letter {
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 2.6rem;
+    font-weight: 700;
+}
+
+.petitbac-chain-form {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.petitbac-chain-form input {
+    flex: 1 1 240px;
+    max-width: 420px;
+    min-width: 0;
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-strong);
+    color: var(--text);
+}
+
+.petitbac-chain-form input::placeholder {
+    color: #79695d;
+}
+
+body[data-theme="dark"] .petitbac-chain-form input::placeholder {
+    color: #aa9d8d;
+}
+
+.petitbac-chain-form input:focus {
+    outline: 2px solid rgba(45, 106, 87, 0.28);
+    outline-offset: 2px;
+}
+
+.petitbac-chain-form button {
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.petitbac-chain-submit {
+    background: var(--accent-alt);
+    color: white;
+}
+
+.petitbac-chain-skip {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-soft);
+}
+
+.petitbac-chain-form button[disabled],
+.petitbac-chain-form input[disabled] {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.petitbac-chain-feedback {
+    min-height: 24px;
+    font-weight: 700;
+    color: var(--text-soft);
+}
+
+.petitbac-chain-feedback.success {
+    color: var(--accent-alt);
+}
+
+.petitbac-chain-feedback.error {
+    color: var(--accent-dark);
+}
+
+.petitbac-chain-shake {
+    animation: shake 0.3s;
+}
+
 @keyframes petitbac-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.45; }
