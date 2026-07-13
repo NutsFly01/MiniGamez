@@ -37,6 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
             available: true
         },
         {
+            id: "petitbac",
+            title: "Petit Bac",
+            description: "Une lettre, huit categories, un chrono : trouve un mot par categorie avant la fin du temps.",
+            status: "Nouveau",
+            available: true
+        },
+        {
             id: "snake",
             title: "Snake",
             description: "Une version maison du serpent, a faire grandir sans heurter les murs.",
@@ -117,6 +124,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const puzzleBestTime = document.getElementById("puzzleBestTime");
     const puzzleInfo = document.getElementById("puzzleInfo");
 
+    const petitbacGame = document.getElementById("petitbacGame");
+    const petitbacBoard = document.getElementById("petitbacBoard");
+    const petitbacModeSelect = document.getElementById("petitbacMode");
+    const petitbacDurationSelect = document.getElementById("petitbacDuration");
+    const petitbacScoreLabel = document.getElementById("petitbacScoreLabel");
+    const petitbacChain = document.getElementById("petitbacChain");
+    const petitbacChainQuestion = document.getElementById("petitbacChainQuestion");
+    const petitbacChainLetter = document.getElementById("petitbacChainLetter");
+    const petitbacChainForm = document.getElementById("petitbacChainForm");
+    const petitbacChainInput = document.getElementById("petitbacChainInput");
+    const petitbacChainSubmit = document.getElementById("petitbacChainSubmit");
+    const petitbacChainSkip = document.getElementById("petitbacChainSkip");
+    const petitbacChainFeedback = document.getElementById("petitbacChainFeedback");
+    const newPetitbacRoundButton = document.getElementById("newPetitbacRound");
+    const stopPetitbacRoundButton = document.getElementById("stopPetitbacRound");
+    const petitbacLetterElement = document.getElementById("petitbacLetter");
+    const petitbacTimeLeftElement = document.getElementById("petitbacTimeLeft");
+    const petitbacRoundScoreElement = document.getElementById("petitbacRoundScore");
+    const petitbacBestScoreElement = document.getElementById("petitbacBestScore");
+    const petitbacInfo = document.getElementById("petitbacInfo");
+
     const knightState = {
         knightPosition: { row: 0, col: 0 },
         visitedSquares: new Set(),
@@ -175,6 +203,69 @@ document.addEventListener("DOMContentLoaded", () => {
         dragOffsetY: 0,
         artworkCache: new Map()
     };
+
+    const petitbacCategories = [
+        { id: "prenom", label: "Prenom", placeholder: "Exemple : Lea, Bruno..." },
+        { id: "animal", label: "Animal", placeholder: "Exemple : loutre, aigle..." },
+        { id: "ville", label: "Ville", placeholder: "Exemple : Lyon, Oslo..." },
+        { id: "pays", label: "Pays", placeholder: "Exemple : Bresil, Italie..." },
+        { id: "metier", label: "Metier", placeholder: "Exemple : boulanger, avocate..." },
+        { id: "fruit", label: "Fruit ou legume", placeholder: "Exemple : ananas, radis..." },
+        { id: "objet", label: "Objet", placeholder: "Exemple : lampe, ciseaux..." },
+        { id: "celebrite", label: "Celebrite", placeholder: "Exemple : Zidane, Piaf..." }
+    ];
+
+    const petitbacLetterPool = "ABCDEFGHIJLMNOPRSTV";
+
+    const petitbacChainQuestions = [
+        "Un metier",
+        "Une chose en metal",
+        "Un animal",
+        "Un prenom",
+        "Une ville",
+        "Un pays",
+        "Quelque chose qui se mange",
+        "Un objet de la maison",
+        "Quelque chose qu'on trouve a l'ecole",
+        "Un sport",
+        "Un fruit ou un legume",
+        "Une chose en bois",
+        "Quelque chose de rond",
+        "Un vetement",
+        "Un instrument de musique",
+        "Un personnage de fiction",
+        "Une celebrite",
+        "Quelque chose qui fait du bruit",
+        "Une chose plus petite qu'une main",
+        "Quelque chose qu'on trouve dans la cuisine",
+        "Un titre de film ou de serie",
+        "Quelque chose de froid",
+        "Quelque chose qui vole",
+        "Une boisson",
+        "Quelque chose qu'on peut offrir en cadeau",
+        "Quelque chose qui roule",
+        "Quelque chose qu'on trouve dans la nature",
+        "Une partie du corps",
+        "Un mot de la salle de bain",
+        "Quelque chose qui se trouve dans une valise"
+    ];
+
+    const petitbacState = {
+        mode: "classic",
+        letter: "",
+        phase: "idle",
+        remainingSeconds: 0,
+        timerId: null,
+        results: new Map(),
+        roundScore: 0,
+        roundId: 0,
+        chainCount: 0,
+        chainQuestion: "",
+        chainChallengeId: 0,
+        chainChecking: false
+    };
+
+    const petitbacWordCache = new Map();
 
     const puzzleArtworkCatalog = {
         bubbles: {
@@ -546,9 +637,14 @@ document.addEventListener("DOMContentLoaded", () => {
         wikiGame.classList.toggle("hidden", gameId !== "wiki");
         sudokuGame.classList.toggle("hidden", gameId !== "sudoku");
         puzzleGame.classList.toggle("hidden", gameId !== "puzzle");
+        petitbacGame.classList.toggle("hidden", gameId !== "petitbac");
 
         if (gameId !== "puzzle") {
             stopPuzzleTimer();
+        }
+
+        if (gameId !== "petitbac") {
+            stopPetitbacTimer();
         }
     }
 
@@ -580,6 +676,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (gameId === "puzzle") {
             initializePuzzleGame();
+        }
+
+        if (gameId === "petitbac") {
+            initializePetitbacGame();
         }
     }
 
@@ -2659,6 +2759,589 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     themeToggleButtons.forEach((button) => button.addEventListener("click", toggleTheme));
     boardSizeSelect.addEventListener("change", initializeKnightBoard);
+    function normalizePetitbacText(value) {
+        return value
+            .normalize("NFD")
+            .replace(/\p{Diacritic}/gu, "")
+            .toLowerCase()
+            .trim();
+    }
+
+    function capitalizePetitbacWords(value) {
+        return value.replace(/(^|[\s-])(\p{L})/gu, (match, separator, letter) => separator + letter.toUpperCase());
+    }
+
+    async function queryPetitbacPagesExist(host, titles) {
+        const encodedTitles = encodeURIComponent(titles.join("|"));
+        const response = await fetch(
+            `https://${host}/w/api.php?action=query&format=json&origin=*&redirects=1&titles=${encodedTitles}`
+        );
+
+        if (!response.ok) {
+            throw new Error(`${host} n'a pas repondu correctement.`);
+        }
+
+        const payload = await response.json();
+        const pages = payload.query && payload.query.pages ? payload.query.pages : {};
+        return Object.values(pages).some((page) => typeof page.pageid === "number" && page.pageid > 0);
+    }
+
+    // Renvoie true (mot trouve), false (introuvable) ou null (dictionnaire injoignable).
+    async function checkPetitbacWordExists(rawWord) {
+        const cleanedWord = rawWord.trim().replace(/\s+/g, " ");
+        const cacheKey = cleanedWord.toLowerCase();
+
+        if (petitbacWordCache.has(cacheKey)) {
+            return petitbacWordCache.get(cacheKey);
+        }
+
+        const lowerWord = cleanedWord.toLowerCase();
+        const capitalizedWord = lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        const wiktionaryTitles = [...new Set([cleanedWord, lowerWord, capitalizedWord])];
+        const wikipediaTitles = [...new Set([cleanedWord, capitalizePetitbacWords(lowerWord)])];
+
+        const lookups = await Promise.all([
+            queryPetitbacPagesExist("fr.wiktionary.org", wiktionaryTitles).catch(() => null),
+            queryPetitbacPagesExist("fr.wikipedia.org", wikipediaTitles).catch(() => null)
+        ]);
+
+        let verdict;
+        if (lookups.includes(true)) {
+            verdict = true;
+        } else if (lookups.every((result) => result === false)) {
+            verdict = false;
+        } else {
+            return null;
+        }
+
+        petitbacWordCache.set(cacheKey, verdict);
+        return verdict;
+    }
+
+    function setPetitbacInfoMessage(message, tone = "") {
+        petitbacInfo.textContent = message;
+        petitbacInfo.className = "info";
+        if (tone) {
+            petitbacInfo.classList.add(tone);
+        }
+    }
+
+    function getPetitbacBestScoreKey() {
+        const modeSuffix = petitbacState.mode === "chain" ? "chain_" : "";
+        return `minigamez_petitbac_${modeSuffix}bestScore_${petitbacDurationSelect.value}`;
+    }
+
+    function loadPetitbacBestScore() {
+        const storedBest = localStorage.getItem(getPetitbacBestScoreKey());
+        const unit = petitbacState.mode === "chain" ? "mots" : "pts";
+        petitbacBestScoreElement.textContent = storedBest ? `${storedBest} ${unit}` : "-";
+    }
+
+    function updatePetitbacBestScore(score) {
+        const storedBest = Number.parseInt(localStorage.getItem(getPetitbacBestScoreKey()) || "0", 10);
+        if (score > storedBest) {
+            localStorage.setItem(getPetitbacBestScoreKey(), String(score));
+        }
+        loadPetitbacBestScore();
+    }
+
+    function formatPetitbacTime(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function stopPetitbacTimer() {
+        if (petitbacState.timerId !== null) {
+            clearInterval(petitbacState.timerId);
+            petitbacState.timerId = null;
+        }
+    }
+
+    function buildPetitbacBoard() {
+        const rowsMarkup = petitbacCategories.map((category) => `
+            <div class="petitbac-row" data-category="${category.id}">
+                <label class="petitbac-label" for="petitbac-input-${category.id}">${escapeHtml(category.label)}</label>
+                <input
+                    id="petitbac-input-${category.id}"
+                    class="petitbac-input"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="${escapeHtml(category.placeholder)}"
+                    disabled
+                >
+                <button class="petitbac-mark" type="button" disabled aria-label="Resultat ${escapeHtml(category.label)}"></button>
+            </div>
+        `).join("");
+
+        petitbacBoard.innerHTML = rowsMarkup;
+
+        petitbacBoard.querySelectorAll(".petitbac-input").forEach((input, index, inputs) => {
+            input.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") {
+                    return;
+                }
+
+                event.preventDefault();
+                if (index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                } else if (petitbacState.phase === "running") {
+                    finishPetitbacRound();
+                }
+            });
+        });
+
+        petitbacBoard.querySelectorAll(".petitbac-mark").forEach((markButton) => {
+            markButton.addEventListener("click", handlePetitbacMarkClick);
+        });
+    }
+
+    function updatePetitbacTimeDisplay() {
+        petitbacTimeLeftElement.textContent = formatPetitbacTime(petitbacState.remainingSeconds);
+        petitbacTimeLeftElement.classList.toggle(
+            "petitbac-time-urgent",
+            petitbacState.phase === "running" && petitbacState.remainingSeconds <= 10
+        );
+    }
+
+    function drawPetitbacLetter() {
+        return petitbacLetterPool[Math.floor(Math.random() * petitbacLetterPool.length)];
+    }
+
+    function startPetitbacCountdown(onTimeout) {
+        petitbacState.timerId = setInterval(() => {
+            petitbacState.remainingSeconds -= 1;
+            updatePetitbacTimeDisplay();
+
+            if (petitbacState.remainingSeconds <= 0) {
+                onTimeout();
+            }
+        }, 1000);
+    }
+
+    function startPetitbacRound() {
+        if (petitbacState.mode === "chain") {
+            startPetitbacChainRound();
+        } else {
+            startPetitbacClassicRound();
+        }
+    }
+
+    function startPetitbacClassicRound() {
+        stopPetitbacTimer();
+
+        petitbacState.letter = drawPetitbacLetter();
+        petitbacState.phase = "running";
+        petitbacState.roundId += 1;
+        petitbacState.remainingSeconds = Number.parseInt(petitbacDurationSelect.value, 10);
+        petitbacState.results.clear();
+        petitbacState.roundScore = 0;
+
+        petitbacLetterElement.textContent = petitbacState.letter;
+        petitbacRoundScoreElement.textContent = "0";
+        stopPetitbacRoundButton.disabled = false;
+        newPetitbacRoundButton.textContent = "Relancer une manche";
+        loadPetitbacBestScore();
+        updatePetitbacTimeDisplay();
+
+        petitbacBoard.querySelectorAll(".petitbac-row").forEach((row) => {
+            row.classList.remove("is-valid", "is-invalid");
+            const input = row.querySelector(".petitbac-input");
+            const markButton = row.querySelector(".petitbac-mark");
+            input.value = "";
+            input.disabled = false;
+            markButton.disabled = true;
+            markButton.textContent = "";
+            markButton.classList.remove("valid", "invalid", "is-toggleable");
+        });
+
+        const firstInput = petitbacBoard.querySelector(".petitbac-input");
+        if (firstInput) {
+            firstInput.focus();
+        }
+
+        setPetitbacInfoMessage(`C'est parti ! Trouve des mots qui commencent par la lettre ${petitbacState.letter}.`);
+
+        startPetitbacCountdown(() => finishPetitbacClassicRound(true));
+    }
+
+    function evaluatePetitbacAnswer(value) {
+        const normalizedAnswer = normalizePetitbacText(value);
+        if (!normalizedAnswer) {
+            return "empty";
+        }
+
+        return normalizedAnswer.startsWith(petitbacState.letter.toLowerCase()) ? "accepted" : "wrong-letter";
+    }
+
+    function recomputePetitbacScore() {
+        let score = 0;
+        petitbacState.results.forEach((result) => {
+            if (result === "accepted") {
+                score += 2;
+            }
+        });
+
+        petitbacState.roundScore = score;
+        petitbacRoundScoreElement.textContent = String(score);
+    }
+
+    function renderPetitbacMarkChecking(row) {
+        const markButton = row.querySelector(".petitbac-mark");
+        row.classList.remove("is-valid", "is-invalid");
+        markButton.classList.remove("valid", "invalid", "is-toggleable");
+        markButton.classList.add("checking");
+        markButton.disabled = true;
+        markButton.textContent = "verif...";
+        markButton.title = "";
+    }
+
+    function renderPetitbacMark(row, result) {
+        const markButton = row.querySelector(".petitbac-mark");
+        const isAccepted = result === "accepted";
+        const isToggleable = result === "accepted" || result === "refused" || result === "not-found";
+
+        row.classList.toggle("is-valid", isAccepted);
+        row.classList.toggle("is-invalid", !isAccepted);
+        markButton.classList.remove("checking");
+        markButton.classList.toggle("valid", isAccepted);
+        markButton.classList.toggle("invalid", !isAccepted);
+        markButton.classList.toggle("is-toggleable", isToggleable);
+        markButton.disabled = !isToggleable;
+
+        if (isAccepted) {
+            markButton.textContent = "✓ 2 pts";
+            markButton.title = "Clique pour refuser ce mot";
+        } else if (result === "refused") {
+            markButton.textContent = "✗ refuse";
+            markButton.title = "Clique pour reaccepter ce mot";
+        } else if (result === "not-found") {
+            markButton.textContent = "✗ pas au dico";
+            markButton.title = "Introuvable au dictionnaire. Clique pour forcer ce mot.";
+        } else if (result === "wrong-letter") {
+            markButton.textContent = "✗ mauvaise lettre";
+            markButton.title = "";
+        } else {
+            markButton.textContent = "✗ vide";
+            markButton.title = "";
+        }
+    }
+
+    function handlePetitbacMarkClick(event) {
+        if (petitbacState.phase !== "review") {
+            return;
+        }
+
+        const row = event.currentTarget.closest(".petitbac-row");
+        const categoryId = row.dataset.category;
+        const currentResult = petitbacState.results.get(categoryId);
+
+        if (currentResult !== "accepted" && currentResult !== "refused" && currentResult !== "not-found") {
+            return;
+        }
+
+        const nextResult = currentResult === "accepted" ? "refused" : "accepted";
+        petitbacState.results.set(categoryId, nextResult);
+        renderPetitbacMark(row, nextResult);
+        recomputePetitbacScore();
+        updatePetitbacBestScore(petitbacState.roundScore);
+    }
+
+    function finishPetitbacRound(isTimeout = false) {
+        if (petitbacState.mode === "chain") {
+            finishPetitbacChainRound(isTimeout);
+        } else {
+            finishPetitbacClassicRound(isTimeout);
+        }
+    }
+
+    function finishPetitbacClassicRound(isTimeout = false) {
+        if (petitbacState.phase !== "running") {
+            return;
+        }
+
+        stopPetitbacTimer();
+        petitbacState.phase = "review";
+        petitbacState.remainingSeconds = Math.max(petitbacState.remainingSeconds, 0);
+        stopPetitbacRoundButton.disabled = true;
+        updatePetitbacTimeDisplay();
+
+        const rowsToVerify = [];
+
+        petitbacBoard.querySelectorAll(".petitbac-row").forEach((row) => {
+            const input = row.querySelector(".petitbac-input");
+            input.disabled = true;
+
+            const result = evaluatePetitbacAnswer(input.value);
+            petitbacState.results.set(row.dataset.category, result);
+
+            if (result === "accepted") {
+                rowsToVerify.push(row);
+                renderPetitbacMarkChecking(row);
+            } else {
+                renderPetitbacMark(row, result);
+            }
+        });
+
+        recomputePetitbacScore();
+
+        const openingMessage = isTimeout ? "Temps ecoule !" : "Manche terminee !";
+
+        if (!rowsToVerify.length) {
+            updatePetitbacBestScore(petitbacState.roundScore);
+            setPetitbacInfoMessage(`${openingMessage} Score : 0 / ${petitbacCategories.length * 2} points.`);
+            return;
+        }
+
+        setPetitbacInfoMessage(`${openingMessage} Verification des mots au dictionnaire...`);
+        verifyPetitbacClassicAnswers(rowsToVerify, openingMessage);
+    }
+
+    async function verifyPetitbacClassicAnswers(rowsToVerify, openingMessage) {
+        const currentRoundId = petitbacState.roundId;
+        let unreachableCount = 0;
+
+        await Promise.all(rowsToVerify.map(async (row) => {
+            const input = row.querySelector(".petitbac-input");
+            const verdict = await checkPetitbacWordExists(input.value);
+
+            if (petitbacState.roundId !== currentRoundId) {
+                return;
+            }
+
+            if (verdict === null) {
+                unreachableCount += 1;
+            }
+
+            const result = verdict === false ? "not-found" : "accepted";
+            petitbacState.results.set(row.dataset.category, result);
+            renderPetitbacMark(row, result);
+        }));
+
+        if (petitbacState.roundId !== currentRoundId || petitbacState.phase !== "review") {
+            return;
+        }
+
+        recomputePetitbacScore();
+        updatePetitbacBestScore(petitbacState.roundScore);
+
+        const maxScore = petitbacCategories.length * 2;
+        const tone = petitbacState.roundScore >= maxScore ? "success" : "";
+        const unreachableNote = unreachableCount > 0
+            ? " (dictionnaire injoignable pour certains mots, ils sont acceptes)"
+            : "";
+        setPetitbacInfoMessage(
+            `${openingMessage} Score : ${petitbacState.roundScore} / ${maxScore} points${unreachableNote}. Clique sur une coche pour corriger si le dico se trompe.`,
+            tone
+        );
+    }
+
+    function setPetitbacChainFeedback(message, tone = "") {
+        petitbacChainFeedback.textContent = message;
+        petitbacChainFeedback.className = "petitbac-chain-feedback";
+        if (tone) {
+            petitbacChainFeedback.classList.add(tone);
+        }
+    }
+
+    function setPetitbacChainControlsEnabled(isEnabled) {
+        petitbacChainInput.disabled = !isEnabled;
+        petitbacChainSubmit.disabled = !isEnabled;
+        petitbacChainSkip.disabled = !isEnabled;
+    }
+
+    function nextPetitbacChainChallenge() {
+        petitbacState.chainChallengeId += 1;
+        petitbacState.letter = drawPetitbacLetter();
+
+        let question = petitbacState.chainQuestion;
+        while (question === petitbacState.chainQuestion) {
+            question = petitbacChainQuestions[Math.floor(Math.random() * petitbacChainQuestions.length)];
+        }
+        petitbacState.chainQuestion = question;
+
+        petitbacLetterElement.textContent = petitbacState.letter;
+        petitbacChainLetter.textContent = petitbacState.letter;
+        petitbacChainQuestion.textContent = question;
+        petitbacChainInput.value = "";
+        petitbacChainInput.focus();
+    }
+
+    function startPetitbacChainRound() {
+        stopPetitbacTimer();
+
+        petitbacState.phase = "running";
+        petitbacState.roundId += 1;
+        petitbacState.remainingSeconds = Number.parseInt(petitbacDurationSelect.value, 10);
+        petitbacState.chainCount = 0;
+        petitbacState.chainQuestion = "";
+        petitbacState.chainChecking = false;
+
+        petitbacRoundScoreElement.textContent = "0";
+        stopPetitbacRoundButton.disabled = false;
+        newPetitbacRoundButton.textContent = "Relancer une manche";
+        setPetitbacChainControlsEnabled(true);
+        setPetitbacChainFeedback("");
+        loadPetitbacBestScore();
+        updatePetitbacTimeDisplay();
+        nextPetitbacChainChallenge();
+
+        setPetitbacInfoMessage("C'est parti ! Reponds a la question avec un mot qui commence par la lettre affichee.");
+
+        startPetitbacCountdown(() => finishPetitbacChainRound(true));
+    }
+
+    function rejectPetitbacChainAnswer(message) {
+        setPetitbacChainFeedback(message, "error");
+        petitbacChainInput.classList.remove("petitbac-chain-shake");
+        void petitbacChainInput.offsetWidth;
+        petitbacChainInput.classList.add("petitbac-chain-shake");
+        petitbacChainInput.select();
+    }
+
+    async function handlePetitbacChainSubmit(event) {
+        event.preventDefault();
+
+        if (petitbacState.phase !== "running" || petitbacState.mode !== "chain" || petitbacState.chainChecking) {
+            return;
+        }
+
+        const rawAnswer = petitbacChainInput.value.trim();
+        const normalizedAnswer = normalizePetitbacText(rawAnswer);
+
+        if (!normalizedAnswer) {
+            rejectPetitbacChainAnswer("Ecris un mot avant de valider !");
+            return;
+        }
+
+        if (normalizedAnswer.length < 2) {
+            rejectPetitbacChainAnswer("Il faut un vrai mot, pas juste une lettre !");
+            return;
+        }
+
+        if (!normalizedAnswer.startsWith(petitbacState.letter.toLowerCase())) {
+            rejectPetitbacChainAnswer(`"${rawAnswer}" ne commence pas par la lettre ${petitbacState.letter} !`);
+            return;
+        }
+
+        const currentRoundId = petitbacState.roundId;
+        const currentChallengeId = petitbacState.chainChallengeId;
+        petitbacState.chainChecking = true;
+        petitbacChainSubmit.disabled = true;
+        setPetitbacChainFeedback(`Verification de "${rawAnswer}" au dictionnaire...`);
+
+        const verdict = await checkPetitbacWordExists(rawAnswer);
+
+        petitbacState.chainChecking = false;
+        if (petitbacState.roundId !== currentRoundId || petitbacState.phase !== "running") {
+            return;
+        }
+
+        petitbacChainSubmit.disabled = false;
+        if (petitbacState.chainChallengeId !== currentChallengeId) {
+            return;
+        }
+
+        if (verdict === false) {
+            rejectPetitbacChainAnswer(`"${rawAnswer}" est introuvable au dictionnaire !`);
+            return;
+        }
+
+        petitbacState.chainCount += 1;
+        petitbacRoundScoreElement.textContent = String(petitbacState.chainCount);
+        setPetitbacChainFeedback(
+            verdict === null
+                ? `"${rawAnswer}" accepte (dictionnaire injoignable), question suivante !`
+                : `"${rawAnswer}" accepte, question suivante !`,
+            "success"
+        );
+        nextPetitbacChainChallenge();
+    }
+
+    function skipPetitbacChainChallenge() {
+        if (petitbacState.phase !== "running" || petitbacState.mode !== "chain") {
+            return;
+        }
+
+        setPetitbacChainFeedback("Question passee, en voila une autre !");
+        nextPetitbacChainChallenge();
+    }
+
+    function finishPetitbacChainRound(isTimeout = false) {
+        if (petitbacState.phase !== "running") {
+            return;
+        }
+
+        stopPetitbacTimer();
+        petitbacState.phase = "finished";
+        petitbacState.remainingSeconds = Math.max(petitbacState.remainingSeconds, 0);
+        stopPetitbacRoundButton.disabled = true;
+        setPetitbacChainControlsEnabled(false);
+        updatePetitbacTimeDisplay();
+        updatePetitbacBestScore(petitbacState.chainCount);
+        setPetitbacChainFeedback("");
+
+        const openingMessage = isTimeout ? "Temps ecoule !" : "Manche terminee !";
+        const wordLabel = petitbacState.chainCount > 1 ? "mots" : "mot";
+        setPetitbacInfoMessage(
+            `${openingMessage} Tu as trouve ${petitbacState.chainCount} ${wordLabel}. Relance une manche pour battre ton record.`,
+            petitbacState.chainCount > 0 ? "success" : ""
+        );
+    }
+
+    function initializePetitbacGame() {
+        stopPetitbacTimer();
+        petitbacState.mode = petitbacModeSelect.value;
+        petitbacState.phase = "idle";
+        petitbacState.roundId += 1;
+        petitbacState.letter = "";
+        petitbacState.results.clear();
+        petitbacState.roundScore = 0;
+        petitbacState.chainCount = 0;
+        petitbacState.chainQuestion = "";
+        petitbacState.chainChecking = false;
+
+        if (!petitbacBoard.children.length) {
+            buildPetitbacBoard();
+        }
+
+        const isChainMode = petitbacState.mode === "chain";
+        petitbacBoard.classList.toggle("hidden", isChainMode);
+        petitbacChain.classList.toggle("hidden", !isChainMode);
+        petitbacScoreLabel.textContent = isChainMode ? "Mots trouves" : "Score de la manche";
+
+        petitbacChainQuestion.textContent = "Lance une manche pour voir la premiere question.";
+        petitbacChainLetter.textContent = "?";
+        petitbacChainInput.value = "";
+        setPetitbacChainControlsEnabled(false);
+        setPetitbacChainFeedback("");
+
+        petitbacBoard.querySelectorAll(".petitbac-row").forEach((row) => {
+            row.classList.remove("is-valid", "is-invalid");
+            const input = row.querySelector(".petitbac-input");
+            const markButton = row.querySelector(".petitbac-mark");
+            input.value = "";
+            input.disabled = true;
+            markButton.disabled = true;
+            markButton.textContent = "";
+            markButton.classList.remove("valid", "invalid", "is-toggleable");
+        });
+
+        petitbacLetterElement.textContent = "-";
+        petitbacTimeLeftElement.textContent = "--";
+        petitbacTimeLeftElement.classList.remove("petitbac-time-urgent");
+        petitbacRoundScoreElement.textContent = "0";
+        stopPetitbacRoundButton.disabled = true;
+        newPetitbacRoundButton.textContent = "Nouvelle manche";
+        loadPetitbacBestScore();
+        setPetitbacInfoMessage(
+            isChainMode
+                ? "Lance une manche : une lettre et une question a la fois, enchaine un maximum de bonnes reponses."
+                : "Lance une manche pour tirer une lettre au sort."
+        );
+    }
+
     newGameButton.addEventListener("click", initializeKnightBoard);
     resetQueensButton.addEventListener("click", () => initializeQueensBoard("Quadrillage reinitialise."));
     changeQueensGridButton.addEventListener("click", () => {
@@ -2690,6 +3373,17 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("pointerup", handlePuzzlePointerUp);
     window.addEventListener("pointercancel", handlePuzzlePointerUp);
     window.addEventListener("keydown", handlePuzzleKeydown);
+    newPetitbacRoundButton.addEventListener("click", startPetitbacRound);
+    stopPetitbacRoundButton.addEventListener("click", () => finishPetitbacRound(false));
+    petitbacModeSelect.addEventListener("change", initializePetitbacGame);
+    petitbacChainForm.addEventListener("submit", handlePetitbacChainSubmit);
+    petitbacChainSkip.addEventListener("click", skipPetitbacChainChallenge);
+    petitbacDurationSelect.addEventListener("change", () => {
+        loadPetitbacBestScore();
+        if (petitbacState.phase === "idle") {
+            petitbacTimeLeftElement.textContent = "--";
+        }
+    });
 
     renderGames();
     applyTheme(getInitialTheme());

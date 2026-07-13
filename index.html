@@ -271,6 +271,91 @@
                         </div>
                     </section>
 
+                    <section class="game-card hidden" id="petitbacGame">
+                        <div class="game-header">
+                            <div>
+                                <p class="panel-kicker">Jeu jouable</p>
+                                <h3>Petit Bac</h3>
+                            </div>
+                            <p class="game-description">
+                                Une lettre est tiree au sort : trouve un mot par categorie commencant par cette lettre avant la fin du chrono.
+                            </p>
+                        </div>
+
+                        <div class="controls petitbac-controls">
+                            <label for="petitbacMode">Mode</label>
+                            <select id="petitbacMode">
+                                <option value="classic" selected>Classique : 8 categories</option>
+                                <option value="chain">Enchainement : 1 question a la fois</option>
+                            </select>
+                            <label for="petitbacDuration">Duree de la manche</label>
+                            <select id="petitbacDuration">
+                                <option value="30">30 secondes</option>
+                                <option value="60" selected>60 secondes</option>
+                                <option value="90">90 secondes</option>
+                                <option value="120">120 secondes</option>
+                            </select>
+                            <button id="newPetitbacRound" type="button">Nouvelle manche</button>
+                            <button id="stopPetitbacRound" type="button" disabled>J'ai fini !</button>
+                        </div>
+
+                        <div class="stats petitbac-stats">
+                            <div class="stat-pill">
+                                <span class="stat-label">Lettre</span>
+                                <span class="stat-value petitbac-letter-value" id="petitbacLetter">-</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Temps restant</span>
+                                <span class="stat-value" id="petitbacTimeLeft">--</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label" id="petitbacScoreLabel">Score de la manche</span>
+                                <span class="stat-value" id="petitbacRoundScore">0</span>
+                            </div>
+                            <div class="stat-pill">
+                                <span class="stat-label">Meilleur score</span>
+                                <span class="stat-value" id="petitbacBestScore">-</span>
+                            </div>
+                        </div>
+
+                        <div class="board-frame petitbac-frame">
+                            <div class="petitbac-board" id="petitbacBoard"></div>
+
+                            <div class="petitbac-chain hidden" id="petitbacChain">
+                                <p class="petitbac-chain-question" id="petitbacChainQuestion">
+                                    Lance une manche pour voir la premiere question.
+                                </p>
+                                <div class="petitbac-chain-letter" id="petitbacChainLetter">?</div>
+                                <form class="petitbac-chain-form" id="petitbacChainForm" autocomplete="off">
+                                    <input
+                                        id="petitbacChainInput"
+                                        type="text"
+                                        spellcheck="false"
+                                        placeholder="Ta reponse..."
+                                        disabled
+                                    >
+                                    <button class="petitbac-chain-submit" id="petitbacChainSubmit" type="submit" disabled>Valider</button>
+                                    <button class="petitbac-chain-skip" id="petitbacChainSkip" type="button" disabled>Passer</button>
+                                </form>
+                                <p class="petitbac-chain-feedback" id="petitbacChainFeedback"></p>
+                            </div>
+                        </div>
+
+                        <div class="rules-card">
+                            <h4>Regles</h4>
+                            <ul class="rules-list">
+                                <li>Chaque reponse doit commencer par la lettre tiree au sort.</li>
+                                <li>Les mots sont verifies en ligne dans le Wiktionnaire et sur Wikipedia (pense aux accents). Sans connexion, ils sont acceptes sans verification.</li>
+                                <li>Mode classique : une reponse valide rapporte 2 points, soit 16 points maximum. A la fin de la manche, les mots sont verifies au dictionnaire ; clique sur une coche pour corriger le resultat. Entree passe a la categorie suivante.</li>
+                                <li>Mode enchainement : une lettre et une question a la fois. Des que ta reponse est bonne, la question suivante arrive. Enchaine un maximum de mots avant la fin du chrono, et passe les questions trop difficiles.</li>
+                            </ul>
+                        </div>
+
+                        <div class="info" id="petitbacInfo">
+                            Lance une manche pour tirer une lettre au sort.
+                        </div>
+                    </section>
+
                     <section class="game-card hidden" id="puzzleGame">
                         <div class="game-header">
                             <div>
