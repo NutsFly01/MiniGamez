@@ -204,50 +204,54 @@ document.addEventListener("DOMContentLoaded", () => {
         artworkCache: new Map()
     };
 
+    // classes = classes Wikidata cibles pour verifier que le mot correspond a la
+    // categorie (via instance de / sous-classe de / taxon parent) ;
+    // materials = matieres cibles (via "materiau de fabrication").
+    // Sans cible, seule l'existence du mot au dictionnaire est verifiee.
     const petitbacCategories = [
-        { id: "prenom", label: "Prenom", placeholder: "Exemple : Lea, Bruno..." },
-        { id: "animal", label: "Animal", placeholder: "Exemple : loutre, aigle..." },
-        { id: "ville", label: "Ville", placeholder: "Exemple : Lyon, Oslo..." },
-        { id: "pays", label: "Pays", placeholder: "Exemple : Bresil, Italie..." },
-        { id: "metier", label: "Metier", placeholder: "Exemple : boulanger, avocate..." },
-        { id: "fruit", label: "Fruit ou legume", placeholder: "Exemple : ananas, radis..." },
+        { id: "prenom", label: "Prenom", placeholder: "Exemple : Lea, Bruno...", classes: ["Q202444"] },
+        { id: "animal", label: "Animal", placeholder: "Exemple : loutre, aigle...", classes: ["Q729"] },
+        { id: "ville", label: "Ville", placeholder: "Exemple : Lyon, Oslo...", classes: ["Q486972"] },
+        { id: "pays", label: "Pays", placeholder: "Exemple : Bresil, Italie...", classes: ["Q6256"] },
+        { id: "metier", label: "Metier", placeholder: "Exemple : boulanger, avocate...", classes: ["Q28640", "Q12737077"] },
+        { id: "fruit", label: "Fruit ou legume", placeholder: "Exemple : ananas, radis...", classes: ["Q1364", "Q11004"] },
         { id: "objet", label: "Objet", placeholder: "Exemple : lampe, ciseaux..." },
-        { id: "celebrite", label: "Celebrite", placeholder: "Exemple : Zidane, Piaf..." }
+        { id: "celebrite", label: "Celebrite", placeholder: "Exemple : Zidane, Piaf...", classes: ["Q5"] }
     ];
 
     const petitbacLetterPool = "ABCDEFGHIJLMNOPRSTV";
 
     const petitbacChainQuestions = [
-        "Un metier",
-        "Une chose en metal",
-        "Un animal",
-        "Un prenom",
-        "Une ville",
-        "Un pays",
-        "Quelque chose qui se mange",
-        "Un objet de la maison",
-        "Quelque chose qu'on trouve a l'ecole",
-        "Un sport",
-        "Un fruit ou un legume",
-        "Une chose en bois",
-        "Quelque chose de rond",
-        "Un vetement",
-        "Un instrument de musique",
-        "Un personnage de fiction",
-        "Une celebrite",
-        "Quelque chose qui fait du bruit",
-        "Une chose plus petite qu'une main",
-        "Quelque chose qu'on trouve dans la cuisine",
-        "Un titre de film ou de serie",
-        "Quelque chose de froid",
-        "Quelque chose qui vole",
-        "Une boisson",
-        "Quelque chose qu'on peut offrir en cadeau",
-        "Quelque chose qui roule",
-        "Quelque chose qu'on trouve dans la nature",
-        "Une partie du corps",
-        "Un mot de la salle de bain",
-        "Quelque chose qui se trouve dans une valise"
+        { text: "Un metier", classes: ["Q28640", "Q12737077"] },
+        { text: "Une chose en metal", materials: ["Q11426"] },
+        { text: "Un animal", classes: ["Q729"] },
+        { text: "Un prenom", classes: ["Q202444"] },
+        { text: "Une ville", classes: ["Q486972"] },
+        { text: "Un pays", classes: ["Q6256"] },
+        { text: "Quelque chose qui se mange", classes: ["Q2095"] },
+        { text: "Un objet de la maison" },
+        { text: "Quelque chose qu'on trouve a l'ecole" },
+        { text: "Un sport", classes: ["Q349", "Q31629"] },
+        { text: "Un fruit ou un legume", classes: ["Q1364", "Q11004"] },
+        { text: "Une chose en bois", materials: ["Q287"] },
+        { text: "Quelque chose de rond" },
+        { text: "Un vetement", classes: ["Q11460"] },
+        { text: "Un instrument de musique", classes: ["Q34379"] },
+        { text: "Un personnage de fiction", classes: ["Q95074"] },
+        { text: "Une celebrite", classes: ["Q5"] },
+        { text: "Quelque chose qui fait du bruit" },
+        { text: "Une chose plus petite qu'une main" },
+        { text: "Quelque chose qu'on trouve dans la cuisine" },
+        { text: "Un titre de film ou de serie", classes: ["Q11424", "Q5398426"] },
+        { text: "Quelque chose de froid" },
+        { text: "Quelque chose qui vole" },
+        { text: "Une boisson", classes: ["Q40050"] },
+        { text: "Quelque chose qu'on peut offrir en cadeau" },
+        { text: "Quelque chose qui roule" },
+        { text: "Quelque chose qu'on trouve dans la nature" },
+        { text: "Une partie du corps", classes: ["Q4936952"] },
+        { text: "Un mot de la salle de bain" },
+        { text: "Quelque chose qui se trouve dans une valise" }
     ];
 
     const petitbacState = {
@@ -260,12 +264,13 @@ document.addEventListener("DOMContentLoaded", () => {
         roundScore: 0,
         roundId: 0,
         chainCount: 0,
-        chainQuestion: "",
+        chainQuestion: null,
         chainChallengeId: 0,
         chainChecking: false
     };
 
     const petitbacWordCache = new Map();
+    const petitbacCategoryCache = new Map();
 
     const puzzleArtworkCatalog = {
         bubbles: {
@@ -2774,7 +2779,8 @@ document.addEventListener("DOMContentLoaded", () => {
     async function queryPetitbacPagesExist(host, titles) {
         const encodedTitles = encodeURIComponent(titles.join("|"));
         const response = await fetch(
-            `https://${host}/w/api.php?action=query&format=json&origin=*&redirects=1&titles=${encodedTitles}`
+            `https://${host}/w/api.php?action=query&format=json&origin=*&redirects=1&titles=${encodedTitles}`,
+            { signal: AbortSignal.timeout(8000) }
         );
 
         if (!response.ok) {
@@ -2816,6 +2822,83 @@ document.addEventListener("DOMContentLoaded", () => {
 
         petitbacWordCache.set(cacheKey, verdict);
         return verdict;
+    }
+
+    async function searchPetitbacWikidataEntities(word) {
+        const response = await fetch(
+            `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(word)}&language=fr&uselang=fr&type=item&limit=6&format=json&origin=*`,
+            { signal: AbortSignal.timeout(8000) }
+        );
+
+        if (!response.ok) {
+            throw new Error("Wikidata n'a pas repondu correctement.");
+        }
+
+        const payload = await response.json();
+        return (payload.search || []).map((entry) => entry.id).filter((id) => /^Q\d+$/.test(id));
+    }
+
+    function buildPetitbacCategoryQuery(entityIds, categoryCheck) {
+        const items = entityIds.map((id) => `wd:${id}`).join(" ");
+        const clauses = [];
+
+        if (categoryCheck.classes && categoryCheck.classes.length) {
+            const targets = categoryCheck.classes.map((id) => `wd:${id}`).join(" ");
+            clauses.push(`{ VALUES ?class { ${targets} } ?item wdt:P31/wdt:P279* ?class . }`);
+            clauses.push(`{ VALUES ?class { ${targets} } ?item wdt:P279* ?class . }`);
+            clauses.push(`{ VALUES ?class { ${targets} } ?item wdt:P171* ?class . }`);
+        }
+
+        if (categoryCheck.materials && categoryCheck.materials.length) {
+            const materials = categoryCheck.materials.map((id) => `wd:${id}`).join(" ");
+            clauses.push(`{ VALUES ?material { ${materials} } ?item wdt:P186/wdt:P279* ?material . }`);
+        }
+
+        return `ASK { VALUES ?item { ${items} } ${clauses.join(" UNION ")} }`;
+    }
+
+    // Renvoie true (le mot correspond a la categorie), false (aucune des entites
+    // trouvees ne correspond) ou null (pas d'entite trouvee ou service injoignable).
+    async function checkPetitbacCategoryMatch(rawWord, categoryCheck) {
+        const hasClasses = categoryCheck && categoryCheck.classes && categoryCheck.classes.length;
+        const hasMaterials = categoryCheck && categoryCheck.materials && categoryCheck.materials.length;
+        if (!hasClasses && !hasMaterials) {
+            return true;
+        }
+
+        const cleanedWord = rawWord.trim().replace(/\s+/g, " ");
+        const cacheKey = `${cleanedWord.toLowerCase()}::${(categoryCheck.classes || []).join(",")}::${(categoryCheck.materials || []).join(",")}`;
+
+        if (petitbacCategoryCache.has(cacheKey)) {
+            return petitbacCategoryCache.get(cacheKey);
+        }
+
+        try {
+            const entityIds = await searchPetitbacWikidataEntities(cleanedWord);
+            if (!entityIds.length) {
+                return null;
+            }
+
+            const query = buildPetitbacCategoryQuery(entityIds, categoryCheck);
+            const response = await fetch(
+                `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`,
+                { signal: AbortSignal.timeout(8000) }
+            );
+
+            if (!response.ok) {
+                throw new Error("Wikidata Query Service n'a pas repondu correctement.");
+            }
+
+            const payload = await response.json();
+            if (typeof payload.boolean !== "boolean") {
+                return null;
+            }
+
+            petitbacCategoryCache.set(cacheKey, payload.boolean);
+            return payload.boolean;
+        } catch (error) {
+            return null;
+        }
     }
 
     function setPetitbacInfoMessage(message, tone = "") {
@@ -3000,7 +3083,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderPetitbacMark(row, result) {
         const markButton = row.querySelector(".petitbac-mark");
         const isAccepted = result === "accepted";
-        const isToggleable = result === "accepted" || result === "refused" || result === "not-found";
+        const isToggleable = result === "accepted" || result === "refused" || result === "not-found" || result === "off-category";
 
         row.classList.toggle("is-valid", isAccepted);
         row.classList.toggle("is-invalid", !isAccepted);
@@ -3019,6 +3102,9 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (result === "not-found") {
             markButton.textContent = "✗ pas au dico";
             markButton.title = "Introuvable au dictionnaire. Clique pour forcer ce mot.";
+        } else if (result === "off-category") {
+            markButton.textContent = "✗ hors sujet";
+            markButton.title = "Ce mot ne semble pas correspondre a la categorie. Clique pour forcer ce mot.";
         } else if (result === "wrong-letter") {
             markButton.textContent = "✗ mauvaise lettre";
             markButton.title = "";
@@ -3037,7 +3123,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const categoryId = row.dataset.category;
         const currentResult = petitbacState.results.get(categoryId);
 
-        if (currentResult !== "accepted" && currentResult !== "refused" && currentResult !== "not-found") {
+        if (currentResult !== "accepted" && currentResult !== "refused" && currentResult !== "not-found" && currentResult !== "off-category") {
             return;
         }
 
@@ -3104,17 +3190,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
         await Promise.all(rowsToVerify.map(async (row) => {
             const input = row.querySelector(".petitbac-input");
-            const verdict = await checkPetitbacWordExists(input.value);
+            const category = petitbacCategories.find((entry) => entry.id === row.dataset.category);
+
+            const [existsVerdict, categoryVerdict] = await Promise.all([
+                checkPetitbacWordExists(input.value),
+                checkPetitbacCategoryMatch(input.value, category)
+            ]);
 
             if (petitbacState.roundId !== currentRoundId) {
                 return;
             }
 
-            if (verdict === null) {
+            if (existsVerdict === null) {
                 unreachableCount += 1;
             }
 
-            const result = verdict === false ? "not-found" : "accepted";
+            let result = "accepted";
+            if (existsVerdict === false) {
+                result = "not-found";
+            } else if (categoryVerdict === false) {
+                result = "off-category";
+            }
+
             petitbacState.results.set(row.dataset.category, result);
             renderPetitbacMark(row, result);
         }));
@@ -3156,14 +3253,14 @@ document.addEventListener("DOMContentLoaded", () => {
         petitbacState.letter = drawPetitbacLetter();
 
         let question = petitbacState.chainQuestion;
-        while (question === petitbacState.chainQuestion) {
+        while (!question || question === petitbacState.chainQuestion) {
             question = petitbacChainQuestions[Math.floor(Math.random() * petitbacChainQuestions.length)];
         }
         petitbacState.chainQuestion = question;
 
         petitbacLetterElement.textContent = petitbacState.letter;
         petitbacChainLetter.textContent = petitbacState.letter;
-        petitbacChainQuestion.textContent = question;
+        petitbacChainQuestion.textContent = question.text;
         petitbacChainInput.value = "";
         petitbacChainInput.focus();
     }
@@ -3175,7 +3272,7 @@ document.addEventListener("DOMContentLoaded", () => {
         petitbacState.roundId += 1;
         petitbacState.remainingSeconds = Number.parseInt(petitbacDurationSelect.value, 10);
         petitbacState.chainCount = 0;
-        petitbacState.chainQuestion = "";
+        petitbacState.chainQuestion = null;
         petitbacState.chainChecking = false;
 
         petitbacRoundScoreElement.textContent = "0";
@@ -3227,11 +3324,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const currentRoundId = petitbacState.roundId;
         const currentChallengeId = petitbacState.chainChallengeId;
+        const currentQuestion = petitbacState.chainQuestion;
         petitbacState.chainChecking = true;
         petitbacChainSubmit.disabled = true;
-        setPetitbacChainFeedback(`Verification de "${rawAnswer}" au dictionnaire...`);
+        setPetitbacChainFeedback(`Verification de "${rawAnswer}"...`);
 
-        const verdict = await checkPetitbacWordExists(rawAnswer);
+        const [existsVerdict, categoryVerdict] = await Promise.all([
+            checkPetitbacWordExists(rawAnswer),
+            checkPetitbacCategoryMatch(rawAnswer, currentQuestion)
+        ]);
 
         petitbacState.chainChecking = false;
         if (petitbacState.roundId !== currentRoundId || petitbacState.phase !== "running") {
@@ -3243,15 +3344,20 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        if (verdict === false) {
+        if (existsVerdict === false) {
             rejectPetitbacChainAnswer(`"${rawAnswer}" est introuvable au dictionnaire !`);
+            return;
+        }
+
+        if (categoryVerdict === false) {
+            rejectPetitbacChainAnswer(`"${rawAnswer}" existe, mais ne repond pas a la question "${currentQuestion.text}" !`);
             return;
         }
 
         petitbacState.chainCount += 1;
         petitbacRoundScoreElement.textContent = String(petitbacState.chainCount);
         setPetitbacChainFeedback(
-            verdict === null
+            existsVerdict === null
                 ? `"${rawAnswer}" accepte (dictionnaire injoignable), question suivante !`
                 : `"${rawAnswer}" accepte, question suivante !`,
             "success"
@@ -3299,7 +3405,7 @@ document.addEventListener("DOMContentLoaded", () => {
         petitbacState.results.clear();
         petitbacState.roundScore = 0;
         petitbacState.chainCount = 0;
-        petitbacState.chainQuestion = "";
+        petitbacState.chainQuestion = null;
         petitbacState.chainChecking = false;
 
         if (!petitbacBoard.children.length) {
